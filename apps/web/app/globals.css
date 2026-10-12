@@ -406,6 +406,42 @@ p {
   width: 320px;
 }
 
+/* 媒体库标题行的盘内快速查找框（.search-box 小变体，LibraryQuickFind）。 */
+.search-box-compact {
+  width: 230px;
+  height: 36px;
+  padding: 0 12px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.search-box-compact input {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
+/* 清空按钮仅 query 非空时渲染。 */
+.search-box-compact-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  /* 命中区不小于 WCAG 2.5.8 的 24×24 触摸最小尺寸（图标仍 14px）。 */
+  min-width: 24px;
+  min-height: 24px;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+
+.search-box-compact-clear:hover {
+  color: var(--text);
+}
+
 .search-box input::placeholder {
   color: var(--text-muted);
 }
@@ -1317,6 +1353,19 @@ p {
 
   .search-box input,
   .search-box-large input {
+    width: 100%;
+  }
+
+  /* 媒体库查找框换行到标题行下方（860px 断点惯例）。 */
+  .library-find-heading {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .search-box-compact {
+    /* 上方 .search-box 的 flex:1 把 flex-basis 压成 0%，会吃掉这里的 width:100%，
+       查找框挤在标题行右侧缩成小条不换行——flex:none 让 width 生效、换到标题下方。 */
+    flex: none;
     width: 100%;
   }
 
