@@ -202,7 +202,7 @@ export function buildSandboxToolSet(
     },
     flattenMovie: {
       description:
-        'Movie only — AUTOMATIC: pull every video AND subtitle file out of the resource wrapper(s) up into the movie directory and remove the wrappers, in one call (no file selection — a movie is one film, take it all, subtitles included). Then delete any extras (trailers/花絮) with deleteFiles and markObtained(["MOVIE"]).',
+        'Movie only — AUTOMATIC: pull every video AND subtitle file out of the resource wrapper(s) up into the movie directory and remove the wrappers, in one call (subtitles included). Then delete any extras (trailers/花絮) and any redundant quality/resolution copies of the same movie (keep ONLY the single version best matching the user\'s quality preference) with deleteFiles, and markObtained(["MOVIE"]).',
       inputSchema: z.object({}),
       execute: () => asEvidence(() => sandbox.flattenMovie()),
     },

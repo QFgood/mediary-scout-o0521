@@ -220,6 +220,7 @@ describe("Movie system prompt carries movie-specific invariants", () => {
     [/LAST (action|step)|never mark before|in place|only after/i, "mark is the LAST step, only after the film is in place"],
     [/flattenMovie/, "flattenMovie is the movie extraction"],
     [/transferUntilLanded/, "transferUntilLanded for ranked shares / dead links"],
+    [/redundant.*(quality|resolution|version|copies).*deleteFiles|multiple (quality\/resolution|versions).*keep ONLY/i, "dedup multi-version movie share folders to single copy matching quality preference"],
   ])("mentions %s (%s)", (re) => {
     expect(prompt).toMatch(re);
   });

@@ -2975,7 +2975,7 @@ function animeParentDirectoryId(): string {
 }
 
 function defaultQuality(): string {
-  return process.env.MEDIA_TRACK_DEFAULT_QUALITY ?? "4K";
+  return "4K";
 }
 
 export interface ForeignWorkFinding {
