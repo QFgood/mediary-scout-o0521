@@ -62,6 +62,7 @@ describe("Jev settings actions", () => {
   afterEach(() => {
     vi.doUnmock("../lib/workflow-runtime");
     vi.doUnmock("../lib/jev-probe");
+    vi.doUnmock("../lib/service-proxy-probe");
     vi.resetModules();
     if (prevDemo !== undefined) process.env.MEDIA_TRACK_DEMO_MODE = prevDemo;
     else delete process.env.MEDIA_TRACK_DEMO_MODE;
@@ -300,6 +301,29 @@ describe("Jev settings actions", () => {
 
   describe("selective SOCKS5 settings", () => {
     const key = "service_socks5_proxy";
+    it("tests the account's saved address and selected endpoints without saving or changing Jev health", async () => {
+      const probe = vi.fn(async () => [{ service: "anilist", ok: false, message: "HTTP 403", durationMs: 10 }]);
+      vi.doMock("../lib/service-proxy-probe", () => ({ probeServiceProxy: probe }));
+      await repo.setAccountSetting(ACCOUNT_ID, key, JSON.stringify({ url: "socks5://user:secret@proxy.test:1080", services: ["anilist"] }));
+      await repo.setAccountSetting(ACCOUNT_ID, "anilist_api_url", "https://account.example/graphql");
+      const writes = vi.spyOn(repo, "setAccountSetting");
+      const result = await actions.testServiceProxyAction({ url: "", services: ["anilist"] });
+      expect(result.results?.[0]?.message).toBe("HTTP 403");
+      expect(probe).toHaveBeenCalledWith("socks5://user:secret@proxy.test:1080", [{ service: "anilist", url: "https://account.example/graphql" }]);
+      expect(writes).not.toHaveBeenCalled();
+      expect(JSON.stringify(result)).not.toContain("secret");
+    });
+    it("tests an unsaved address, rejects unknown services and respects demo mode", async () => {
+      const probe = vi.fn(async () => []);
+      vi.doMock("../lib/service-proxy-probe", () => ({ probeServiceProxy: probe }));
+      await actions.testServiceProxyAction({ url: "socks5://new.test:1080", services: ["anilist"] });
+      expect(probe).toHaveBeenCalledWith("socks5://new.test:1080", expect.any(Array));
+      expect(await repo.getAccountSetting(ACCOUNT_ID, key)).toBeNull();
+      expect((await actions.testServiceProxyAction({ url: "socks5://new.test:1080", services: ["storage"] })).success).toBe(false);
+      expect(probe).toHaveBeenCalledTimes(1);
+      process.env.MEDIA_TRACK_DEMO_MODE = "1";
+      await expect(actions.testServiceProxyAction({ url: "", services: ["anilist"] })).rejects.toBeInstanceOf(demo.DemoReadOnlyError);
+    });
     it("saves to this account only, keeps the password on blank input, and disables when all services are unchecked", async () => {
       expect((await actions.saveServiceProxyAction({ url: "socks5://user:secret@proxy.test:1080", services: ["jev", "anilist"] })).success).toBe(true);
       const original = await repo.getAccountSetting(ACCOUNT_ID, key);
