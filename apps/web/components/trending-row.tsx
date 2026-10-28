@@ -1,23 +1,28 @@
 import Link from "next/link";
 import { Film, RefreshCw, Search } from "lucide-react";
 import { getTrending, TRENDING_KINDS, TRENDING_KIND_ORDER, type TrendingKind } from "../lib/trending";
+import { getAnimeDiscovery, tmdbDiscoveryCards } from "../lib/anilist/discovery";
+import type { AniListFeed } from "../lib/anilist/client";
+import { anilistDetailsHref, mediaIdentityKey, metadataSearchHref, type MediaSource } from "../lib/metadata/types";
 
-const POSTER = "https://image.tmdb.org/t/p/w342";
-
-/** The search page's empty-state discovery row. When getTrending yields []
- *  (proxy/network down) it falls back to the original "输入目标名称" placeholder,
- *  so the empty state is never blank and search is never blocked. Poster clicks
- *  navigate to `?q=<title>` so the pick lands in the normal results flow where the
- *  user explicitly chooses 获取. `basePath` is `/` or `/w/<id>` (never carries a
- *  query), so `?` is always the correct separator. */
+/** Reuse the discovery wall for TMDB movies/TV and AniList anime. AniList cards
+ *  navigate by their own id; a TMDB fallback retains its TMDB search destination.
+ *  `basePath` keeps navigation inside the active drive's workspace. */
 export async function TrendingRow({
   activeKind,
   basePath,
+  source = "tmdb",
+  animeFeed = "trending",
 }: {
   activeKind: TrendingKind;
   basePath: string;
+  source?: MediaSource;
+  animeFeed?: AniListFeed | undefined;
 }) {
-  const cards = await getTrending(activeKind);
+  const feed = activeKind === "anime" ? await getAnimeDiscovery(animeFeed) : {
+    cards: tmdbDiscoveryCards(await getTrending(activeKind)), source: "tmdb" as const, stale: false, fallback: false,
+  };
+  const { cards } = feed;
   if (cards.length === 0) {
     return (
       <div className="quiet-state">
@@ -36,27 +41,40 @@ export async function TrendingRow({
             <Link
               key={kind}
               className={`filter-pill ${kind === activeKind ? "is-active" : ""}`}
-              href={`${basePath}?trending=${kind}`}
+              href={`${basePath}?${new URLSearchParams({ trending: kind, source: kind === "anime" ? source : "tmdb" })}`}
             >
               {TRENDING_KINDS[kind].label}
             </Link>
           ))}
         </div>
         <span className="trending-note">
-          <RefreshCw size={12} aria-hidden /> 每日更新 · 来自 TMDB
+          <RefreshCw size={12} aria-hidden />
+          {feed.stale ? "历史缓存" : "定时更新"} · 来自 {feed.source === "anilist" ? "AniList" : "TMDB"}
+          {feed.fallback ? "（AniList 暂无可用数据，已回退）" : ""}
         </span>
       </div>
+      {activeKind === "anime" ? (
+        <nav className="metadata-source-tabs" aria-label="动画榜单">
+          {([ ["season", "本季动画"], ["trending", "近期热门"], ["upcoming", "即将播出"] ] as const).map(([value, label]) => (
+            <Link className={`filter-pill ${animeFeed === value ? "is-active" : ""}`} key={value}
+              aria-current={animeFeed === value ? "page" : undefined}
+              href={`${basePath}?${new URLSearchParams({ trending: "anime", source, animeFeed: value })}`}>{label}</Link>
+          ))}
+        </nav>
+      ) : null}
       <div className="trending-grid">
         {cards.map((card, index) => (
           <Link
-            key={`${card.mediaType}_${card.tmdbId}`}
+            key={mediaIdentityKey(card)}
             className="trending-card"
-            href={`${basePath}?q=${encodeURIComponent(card.title)}`}
+            href={card.source === "anilist"
+              ? anilistDetailsHref(card.anilistId, basePath.startsWith("/w/") ? basePath.slice(3) : undefined)
+              : metadataSearchHref(basePath, card.title, "tmdb")}
           >
             <div className="trending-poster">
-              {card.posterPath ? (
+              {card.posterUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`${POSTER}${card.posterPath}`} alt="" loading="lazy" />
+                <img src={card.posterUrl} alt="" loading="lazy" />
               ) : (
                 <Film size={24} aria-hidden />
               )}

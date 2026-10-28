@@ -9,6 +9,11 @@ import { DemoSessionLibrary } from "../components/demo-session-library";
 import { LibraryQuickFind } from "../components/library-quick-find";
 import { RememberQuery } from "../components/search-memory";
 import { SearchForm } from "../components/search-form";
+import { MetadataSourceTabs } from "../components/metadata-source-tabs";
+import { AniListSearchResults } from "../components/anilist-results";
+import { parseMediaSource, type MediaSource } from "../lib/metadata/types";
+import { translateTmdbMedia } from "../lib/metadata/translator";
+import type { AniListFeed } from "../lib/anilist/client";
 import { SeasonRequestMenu } from "../components/season-request-menu";
 import { TrendingRow } from "../components/trending-row";
 import { ConnectNoticeBanner } from "../components/connect-notice-banner";
@@ -83,6 +88,9 @@ async function HomeSurface({
 }) {
   const params = (await searchParams) ?? {};
   const query = stringParam(params.q);
+  const source = parseMediaSource(stringParam(params.source));
+  const feedParam = stringParam(params.animeFeed);
+  const animeFeed: AniListFeed = feedParam === "season" || feedParam === "upcoming" ? feedParam : "trending";
   const activeTab = stringParam(params.tab) === "library" ? "library" : "search";
   const mediaType = stringParam(params.type) || "all";
   const filter = stringParam(params.filter) || "all";
@@ -102,7 +110,7 @@ async function HomeSurface({
 
   return (
     <div className="app-shell">
-      <AppSidebar active={activeTab} searchQuery={query} basePath={basePath} activeStorageId={storageId} />
+      <AppSidebar active={activeTab} searchQuery={query} searchSource={source} basePath={basePath} activeStorageId={storageId} />
 
       <main className="main product-main">
         {showConnectNotice ? (
@@ -110,25 +118,28 @@ async function HomeSurface({
         ) : null}
         {activeTab === "search" ? (
           <section className="search-surface">
-            <RememberQuery query={query} basePath={basePath} />
+            <RememberQuery query={query} basePath={basePath} source={source} />
             <div className="search-hero">
               <div>
                 <h1>搜索</h1>
                 <p>找到目标后发起获取，后台会处理资源判断、转存和验证。</p>
               </div>
-              <SearchForm basePath={basePath} defaultQuery={query} />
+              <SearchForm basePath={basePath} defaultQuery={query} source={source} />
             </div>
+            <MetadataSourceTabs source={source} query={query} basePath={basePath} />
             {driveCount >= 2 ? (
               <p className="panel-note" style={{ marginTop: -4, marginBottom: 4 }}>
                 搜索与获取按网盘隔离 —— 想为某块盘获取资源，请切到该盘后在它的搜索页操作。
               </p>
             ) : null}
-            <Suspense key={`search-${query}`} fallback={<SearchResultsSkeleton />}>
+            <Suspense key={`search-${source}-${query}`} fallback={<SearchResultsSkeleton />}>
               <SearchResults
                 query={query}
                 storageId={storageId}
                 activeTrending={activeTrending}
                 basePath={basePath}
+                source={source}
+                animeFeed={animeFeed}
               />
             </Suspense>
           </section>
@@ -151,12 +162,19 @@ async function SearchResults({
   storageId,
   activeTrending,
   basePath,
+  source,
+  animeFeed,
 }: {
   query: string;
   storageId?: string | undefined;
   activeTrending: TrendingKind;
   basePath: string;
+  source: MediaSource;
+  animeFeed: AniListFeed;
 }) {
+  if (source === "anilist") {
+    return <AniListSearchResults query={query} basePath={basePath} storageId={storageId} animeFeed={animeFeed} />;
+  }
   const searchView = await getSearchView(query, storageId);
   // Library awareness on results: a tracked title shows WHICH seasons are
   // obtained and routes to the same title page as the library — search must
@@ -190,7 +208,7 @@ async function SearchResults({
     <>
       {inProgress.length > 0 ? <AcquiringPoller /> : null}
       {searchView.state === "empty" ? (
-        <TrendingRow activeKind={activeTrending} basePath={basePath} />
+        <TrendingRow activeKind={activeTrending} basePath={basePath} animeFeed={animeFeed} />
       ) : searchView.state === "provider_error" ? (
         // Every TMDB access (direct + proxy) is unreachable from this deployment —
         // a GFW-blocked network without a proxy (issue #134). Degrade with
@@ -319,17 +337,18 @@ function CandidateCard({
   storageId?: string | undefined;
 }) {
   const isTv = candidate.mediaType === "tv";
+  const media = translateTmdbMedia(candidate);
   const trackedSet = new Set(trackedSeasonNumbers);
   // Only seasons NOT yet tracked are offered as acquisition scopes.
   const untrackedSeasons = candidate.seasonNumbers.filter(
     (seasonNumber) => !trackedSet.has(seasonNumber),
   );
   return (
-    <article className="candidate-card">
+    <article className="candidate-card" data-metadata-source={media.source}>
       <Link className="candidate-poster" href={showHref(candidate.tmdbId, "search", storageId, candidate.mediaType)} aria-hidden tabIndex={-1}>
-        {candidate.posterPath ? (
+        {media.posterUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={`https://image.tmdb.org/t/p/w342${candidate.posterPath}`} alt="" loading="lazy" />
+          <img src={media.posterUrl} alt="" loading="lazy" />
         ) : (
           <span>{candidate.title.slice(0, 4)}</span>
         )}

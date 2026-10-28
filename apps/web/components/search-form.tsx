@@ -2,6 +2,7 @@
 
 import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { metadataSearchHref, type MediaSource } from "../lib/metadata/types";
 
 /**
  * The search box. Submitting used to be a NATIVE `<form action>` GET — which is a
@@ -15,9 +16,11 @@ import { useRouter } from "next/navigation";
 export function SearchForm({
   basePath = "/",
   defaultQuery = "",
+  source = "tmdb",
 }: {
   basePath?: string;
   defaultQuery?: string;
+  source?: MediaSource;
 }) {
   const router = useRouter();
   return (
@@ -28,10 +31,11 @@ export function SearchForm({
       onSubmit={(event) => {
         event.preventDefault();
         const value = String(new FormData(event.currentTarget).get("q") ?? "");
-        router.push(`${basePath}?tab=search&q=${encodeURIComponent(value)}`);
+        router.push(metadataSearchHref(basePath, value, source));
       }}
     >
       <input type="hidden" name="tab" value="search" />
+      <input type="hidden" name="source" value={source} />
       <label className="search-box search-box-large">
         <Search size={18} aria-hidden />
         {/* key forces a remount when the URL query changes (back/forward, or a
@@ -42,6 +46,7 @@ export function SearchForm({
           name="q"
           aria-label="搜索媒体"
           placeholder="片名 / 剧名"
+          maxLength={source === "anilist" ? 200 : undefined}
           defaultValue={defaultQuery}
         />
       </label>

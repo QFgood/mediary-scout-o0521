@@ -109,6 +109,7 @@ import { resolveRegistration, deriveBootstrapState, canManageAccounts } from "./
 import { isDemoMode } from "./demo-mode";
 import { isUpdateHoldActive, whileInFlight } from "./update-hold";
 import { DEFAULT_AUTO_UPDATE_TIME, isAutoUpdateTime, shouldAutoUpdate } from "./auto-update-schedule";
+import { ANILIST_TASK_UNSUPPORTED } from "./metadata/task-adapter";
 
 /** Checked by the workflow package right before each claim or patrol reservation, not
  *  only at entry: the updater can take the hold while a tick is still setting up. */
@@ -819,6 +820,9 @@ export async function queueCandidateTracking(
   candidateId: string,
   connectedStorageId?: string | null,
 ): Promise<CandidateTrackingRequestResult> {
+  if (candidateId.startsWith("anilist_")) {
+    return { status: "unsupported", message: ANILIST_TASK_UNSUPPORTED };
+  }
   let accountId: string;
   try {
     accountId = await requireAuthenticatedAccountId();

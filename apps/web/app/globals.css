@@ -3985,6 +3985,19 @@ select.setting-control {
 .update-auto-row .setting-control { width: auto; }
 
 /* 搜索页空态「近期热门」发现区(#95)。Tab 药丸复用 .filter-pill。 */
+.metadata-source-tabs,
+.anilist-relations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.anilist-description {
+  white-space: pre-line;
+  line-height: 1.7;
+}
+
 .trending {
   margin-top: 8px;
 }

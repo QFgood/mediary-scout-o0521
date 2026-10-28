@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
-import { lastQueryKey, switcherTabHref, workspaceSection } from "@media-track/workflow/scope";
+import { switcherTabHref, workspaceSection } from "@media-track/workflow/scope";
+import { rememberedSearchHref } from "../lib/metadata/search-navigation";
 
 export interface WorkspaceTab {
   id: string;
@@ -84,15 +85,10 @@ export function WorkspaceSwitcher({ tabs }: { tabs: WorkspaceTab[] }) {
                 if (section !== "search") {
                   return;
                 }
-                let remembered = "";
-                try {
-                  remembered = sessionStorage.getItem(lastQueryKey(targetBasePath(tab.id))) ?? "";
-                } catch {
-                  remembered = "";
-                }
+                const remembered = rememberedSearchHref(targetBasePath(tab.id), (key) => sessionStorage.getItem(key));
                 if (remembered) {
                   event.preventDefault();
-                  router.push(`${targetBasePath(tab.id)}?tab=search&q=${encodeURIComponent(remembered)}`);
+                  router.push(remembered);
                 }
               }}
             >

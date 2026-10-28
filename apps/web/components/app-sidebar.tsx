@@ -4,6 +4,7 @@ import { Activity, Aperture, Bell, Library, Settings } from "lucide-react";
 import { resolveIsDesktop } from "../lib/workflow-runtime";
 import { globalNavHref } from "@media-track/workflow";
 import { SearchNavLink } from "./search-memory";
+import type { MediaSource } from "../lib/metadata/types";
 import { ActivityNavBadge } from "./activity-nav-badge";
 import { NotificationsNavBadge } from "./notifications-nav-badge";
 import { SettingsAttentionBadge } from "./settings-attention-badge";
@@ -13,11 +14,13 @@ import { AccountIdentityLoader } from "./account-identity-loader";
 export function AppSidebar({
   active,
   searchQuery = "",
+  searchSource,
   basePath = "/",
   activeStorageId,
 }: {
   active: "search" | "library" | "notifications" | "activity" | "settings" | "none";
   searchQuery?: string;
+  searchSource?: MediaSource | undefined;
   /** Tree model: the active workspace path ("/w/<id>" or "/") so the search/library
    *  tabs keep you in the workspace you're viewing. */
   basePath?: string;
@@ -54,7 +57,7 @@ export function AppSidebar({
       <nav aria-label="主导航">
         <ul className="nav-list">
           <li>
-            <SearchNavLink active={active === "search"} knownQuery={searchQuery} basePath={basePath} />
+            <SearchNavLink active={active === "search"} knownQuery={searchQuery} knownSource={searchSource} basePath={basePath} />
           </li>
           <li>
             <Link
