@@ -13,7 +13,7 @@ export function GitHubNameplate() {
   return (
     <footer className="github-nameplate">
       <Link
-        href="https://github.com/fancydirty/mediary-scout"
+        href="https://github.com/QFgood/mediary-scout-o0521"
         target="_blank"
         rel="noopener noreferrer"
         className="github-nameplate-link"
