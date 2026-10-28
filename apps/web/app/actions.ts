@@ -900,6 +900,35 @@ export async function saveJevConfigAction(input: {
   }
 }
 
+export async function testServiceProxyAction(input: { url: string; services: string[] }): Promise<{ success: boolean; message?: string; results?: import("../lib/service-proxy-probe").ProxyProbeResult[] }> {
+  assertNotDemo();
+  try {
+    const runtime = await import("../lib/workflow-runtime");
+    const { PROXY_SERVICES, normalizeSocks5Url, getServiceProxyConfig } = await import("../lib/service-proxy-config");
+    const { probeServiceProxy } = await import("../lib/service-proxy-probe");
+    const settings = runtime.getAccountScopedSettings(await runtime.getCurrentAccountId(), runtime.getWorkflowRepository());
+    if (!Array.isArray(input.services) || !input.services.length || input.services.some((s) => !PROXY_SERVICES.includes(s as typeof PROXY_SERVICES[number]))) return { success: false, message: "请勾选需要测试的服务，仅支持列出的五个服务。" };
+    let url: string;
+    try { url = input.url.trim() ? normalizeSocks5Url(input.url) : (await getServiceProxyConfig(settings)).url; }
+    catch { return { success: false, message: "代理地址无效，请填写 socks5://主机:端口 或 socks5h://主机:端口。" }; }
+    if (!url) return { success: false, message: "请填写代理地址，或先保存一个代理地址。" };
+    const targets: import("../lib/service-proxy-probe").ProxyProbeTarget[] = [];
+    for (const service of PROXY_SERVICES.filter((s) => input.services.includes(s))) {
+      let endpoint: string;
+      switch (service) {
+        case "anilist": endpoint = await (await import("../lib/anilist/config")).resolveAniListApiUrl(settings); break;
+        case "tmdb": endpoint = `${(await runtime.getTmdbAccesses(settings))[0]!.baseURL.replace(/\/+$/, "")}/configuration`; break;
+        case "pansou": endpoint = `${(await runtime.getPanSouBaseUrl(settings)).replace(/\/+$/, "")}/api/search`; break;
+        case "assrt": endpoint = "https://api.assrt.net/v1/sub/search"; break;
+        case "jev": endpoint = (await runtime.getJevConfig(settings)).baseUrl; break;
+      }
+      targets.push({ service, url: endpoint });
+    }
+    const results = await probeServiceProxy(url, targets);
+    return { success: true, results };
+  } catch { return { success: false, message: "无法完成代理测试，请检查服务配置后重试。" }; }
+}
+
 export async function saveServiceProxyAction(input: { url: string; services: string[]; clear?: boolean }): Promise<PushSettingsActionResult> {
   assertNotDemo();
   const { getWorkflowRepository, getCurrentAccountId, getAccountScopedSettings, JEV_HEALTH_SETTING_KEY } = await import("../lib/workflow-runtime");

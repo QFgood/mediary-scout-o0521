@@ -8,6 +8,7 @@ import { PROXY_SERVICES, SERVICE_PROXY_SETTING_KEY } from "./service-proxy-confi
 import { buildPanSouProviderChain } from "./pansou-chain";
 import { probeJev } from "./jev-probe";
 import { probePanSou } from "./pansou-probe";
+import { probeServiceProxy } from "./service-proxy-probe";
 
 /** An in-process SOCKS5 endpoint. It answers the tunneled HTTP request itself;
  * no destination connection, DNS lookup, API key or external service is used. */
@@ -105,5 +106,11 @@ describe("SOCKS5 wire routing for the five supported services", () => {
     const proxy = (await getServiceProxyFetch({ getSetting: async () => JSON.stringify(values) }, "jev"))!;
     await expect(proxy("http://destination.test", { signal: AbortSignal.timeout(200) })).rejects.toThrow();
     expect(destinations).toEqual([]);
+  });
+  it("diagnoses an HTTP-only port mistakenly configured as SOCKS5", async () => {
+    server.removeAllListeners("connection");
+    server.on("connection", (socket) => { sockets.add(socket); socket.on("close", () => sockets.delete(socket)); socket.on("error", () => {}); socket.end("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n"); });
+    const results = await probeServiceProxy(proxyUrl, [{ service: "anilist", url: "https://graphql.anilist.co" }]);
+    expect(results[0]).toMatchObject({ ok: false, message: expect.stringContaining("SOCKS5 握手") });
   });
 });
