@@ -29,6 +29,18 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 describe("account-scoped AniList settings", () => {
+  it("switches transport/cache when the selected proxy changes and restores the default when disabled", async () => {
+    const key = "acct-a:service_socks5_proxy";
+    mocks.settings.set(key, JSON.stringify({ url: "socks5://proxy-a.test:1080", services: ["anilist"] }));
+    const first = await getAniListClient("acct-a");
+    expect(first).not.toBe(anilistClient);
+    expect(await getAniListClient("acct-b")).toBe(anilistClient);
+    mocks.settings.set(key, JSON.stringify({ url: "socks5://proxy-b.test:1080", services: ["anilist"] }));
+    expect(await getAniListClient("acct-a")).not.toBe(first);
+    mocks.settings.set(key, JSON.stringify({ url: "socks5://proxy-b.test:1080", services: [] }));
+    expect(await getAniListClient("acct-a")).toBe(anilistClient);
+  });
+
   it("persists only to the authenticated account and restores the deployment default", async () => {
     expect(await saveAniListApiUrlAction(" https://a.example/graphql ")).toEqual({ success: true, apiUrl: "https://a.example/graphql" });
     expect(mocks.write).toHaveBeenCalledWith("acct-a", ANILIST_API_URL_SETTING_KEY, "https://a.example/graphql");

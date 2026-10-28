@@ -1,3 +1,4 @@
+import type { AssrtProviderPort } from "./subtitle-provider.js";
 import type { LanguageModel } from "ai";
 import type { QueueClaimOptions, TrackedSeasonState, WorkflowRepository } from "./repository.js";
 import { claimNextQueuedRun } from "./repository.js";
@@ -619,6 +620,7 @@ function optionalDeps(deps: Awaited<ReturnType<typeof resolveWorkerDeps>>): {
   qualityPreference?: "high" | "medium";
   storageProvider?: string;
   assrtToken?: string;
+  assrtProvider?: AssrtProviderPort;
   jevJudge?: JevJudge;
   agentMemory?: boolean;
 } {
@@ -627,6 +629,7 @@ function optionalDeps(deps: Awaited<ReturnType<typeof resolveWorkerDeps>>): {
     ...(deps.qualityPreference === undefined ? {} : { qualityPreference: deps.qualityPreference }),
     ...(deps.storageProvider === undefined ? {} : { storageProvider: deps.storageProvider }),
     ...(deps.assrtToken === undefined ? {} : { assrtToken: deps.assrtToken }),
+    ...(deps.assrtProvider === undefined ? {} : { assrtProvider: deps.assrtProvider }),
     ...(deps.jevJudge === undefined ? {} : { jevJudge: deps.jevJudge }),
     ...(deps.agentMemory === undefined ? {} : { agentMemory: deps.agentMemory }),
   };

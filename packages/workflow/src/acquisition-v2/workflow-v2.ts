@@ -1,3 +1,4 @@
+import type { AssrtProviderPort } from "../subtitle-provider.js";
 import type { AgentMemoryStore } from "../agent-memory.js";
 import type { LanguageModel } from "ai";
 import type { ResourceProvider, StorageExecutor } from "../ports.js";
@@ -66,6 +67,7 @@ export interface RunAcquisitionV2WorkflowRequest {
   storageProvider?: string;
   /** assrt token (Settings → 字幕来源). Undefined = 字幕流程不触发。 */
   assrtToken?: string;
+  assrtProvider?: AssrtProviderPort;
   /** Optional Jev candidate prefilter (see orchestrator.jevJudge). */
   jevJudge?: JevJudge;
   deadLinkStore?: DeadLinkStore;
@@ -217,6 +219,7 @@ export async function runAcquisitionV2Workflow(
     ...(request.searchProfile === undefined ? {} : { searchProfile: request.searchProfile }),
     ...(request.storageProvider === undefined ? {} : { storageProvider: request.storageProvider }),
     ...(request.assrtToken === undefined ? {} : { assrtToken: request.assrtToken }),
+    ...(request.assrtProvider === undefined ? {} : { assrtProvider: request.assrtProvider }),
     ...(request.jevJudge === undefined ? {} : { jevJudge: request.jevJudge }),
     ...(request.deadLinkStore ? { deadLinkStore: request.deadLinkStore } : {}),
     ...(request.memory ? { memory: request.memory } : {}),

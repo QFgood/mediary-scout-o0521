@@ -298,6 +298,50 @@ describe("Jev settings actions", () => {
     });
   });
 
+  describe("selective SOCKS5 settings", () => {
+    const key = "service_socks5_proxy";
+    it("saves to this account only, keeps the password on blank input, and disables when all services are unchecked", async () => {
+      expect((await actions.saveServiceProxyAction({ url: "socks5://user:secret@proxy.test:1080", services: ["jev", "anilist"] })).success).toBe(true);
+      const original = await repo.getAccountSetting(ACCOUNT_ID, key);
+      expect(JSON.parse(original!)).toEqual({ url: "socks5://user:secret@proxy.test:1080", services: ["anilist", "jev"] });
+      expect(await repo.getAccountSetting("acct_other", key)).toBeNull();
+      expect(await repo.getAccountSetting(ACCOUNT_ID, rt.JEV_HEALTH_SETTING_KEY)).toBe("untested");
+      await actions.saveServiceProxyAction({ url: "", services: [] });
+      expect(JSON.parse((await repo.getAccountSetting(ACCOUNT_ID, key))!)).toEqual({ url: "socks5://user:secret@proxy.test:1080", services: [] });
+      await actions.saveServiceProxyAction({ url: "", services: [], clear: true });
+      expect(JSON.parse((await repo.getAccountSetting(ACCOUNT_ID, key))!)).toEqual({ url: "", services: [] });
+    });
+
+    it("rejects services outside the allowlist and invalid addresses before writing", async () => {
+      for (const services of [["llm"], ["storage"], ["github"], ["anything"]]) {
+        expect((await actions.saveServiceProxyAction({ url: "socks5://proxy.test:1080", services })).success).toBe(false);
+      }
+      const result = await actions.saveServiceProxyAction({ url: "http://user:secret@proxy.test:1080", services: ["jev"] });
+      expect(result.success).toBe(false);
+      expect(result.message).not.toContain("secret");
+      expect(await repo.getAccountSetting(ACCOUNT_ID, key)).toBeNull();
+      expect(probeMock).not.toHaveBeenCalled();
+    });
+
+    it("requires retesting Jev when its proxy changes without altering another account's verdict", async () => {
+      await repo.setSetting(rt.JEV_HEALTH_SETTING_KEY, "ok");
+      await repo.setAccountSetting("acct_other", rt.JEV_HEALTH_SETTING_KEY, "ok");
+      await actions.saveServiceProxyAction({ url: "socks5://proxy.test:1080", services: ["jev"] });
+      expect((await rt.getJevConfig(rt.getAccountScopedSettings(ACCOUNT_ID, repo))).health).toBe("untested");
+      expect(await repo.getAccountSetting("acct_other", rt.JEV_HEALTH_SETTING_KEY)).toBe("ok");
+      probeMock.mockResolvedValue({ ok: true, model: "m" });
+      await actions.saveJevConfigAction({ apiKey: "dummy", baseUrl: "" });
+      expect(probeMock.mock.calls[0]![1].fetchImpl).toBeTypeOf("function");
+      expect(await repo.getAccountSetting(ACCOUNT_ID, rt.JEV_HEALTH_SETTING_KEY)).toBe("ok");
+    });
+
+    it("is read-only in demo mode", async () => {
+      process.env.MEDIA_TRACK_DEMO_MODE = "1";
+      await expect(actions.saveServiceProxyAction({ url: "socks5://proxy.test:1080", services: ["jev"] })).rejects.toBeInstanceOf(demo.DemoReadOnlyError);
+      expect(await repo.getAccountSetting(ACCOUNT_ID, key)).toBeNull();
+    });
+  });
+
   // Defense in depth: the form is hidden in demo mode, but the server boundary is
   // what actually decides. Mirrors actions.demo.test.ts.
   describe("demo read-only gate", () => {

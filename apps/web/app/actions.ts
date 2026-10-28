@@ -771,7 +771,9 @@ export async function savePanSouBaseUrlAction(baseURL: string): Promise<PushSett
     }
     // 存之前先真打一次。以前只校验 ^https?:// ,于是一个打不通的地址会被欣然
     // 保存,之后每次获取都静默失败并报成「未找到资源」——事故里这样活了 6 天。
-    const probe = await probePanSou(trimmed);
+    const { getServiceProxyFetch } = await import("../lib/service-proxy");
+    const { getAccountScopedSettings } = await import("../lib/workflow-runtime");
+    const probe = await probePanSou(trimmed, { fetchImpl: await getServiceProxyFetch(getAccountScopedSettings(accountId, repository), "pansou") ?? ((input, init) => globalThis.fetch(input, init)) });
     if (!probe.ok) {
       return { success: false, message: probe.message };
     }
@@ -878,7 +880,8 @@ export async function saveJevConfigAction(input: {
     }
     // 存之前真打一次:一个打不通的 key 被保存后,预筛会在每次搜索上静默 fail-open,
     // 用户以为开了其实从没生效 —— 与 PanSou 自建源「活了 6 天」是同一种病。
-    const probe = await probeJev({ apiKey, baseUrl });
+    const { getServiceProxyFetch } = await import("../lib/service-proxy");
+    const probe = await probeJev({ apiKey, baseUrl }, { fetchImpl: await getServiceProxyFetch(scoped, "jev") ?? ((input, init) => globalThis.fetch(input, init)) });
     if (!probe.ok) return { success: false, message: probe.message };
     // 只写用户**这次真输入**的内容:留空的 key 不重写(全局/env 的 key 不会被
     // 复制进 account 行),留空的 URL 写 ""=无覆盖(同 Prowlarr),否则今天的默认
@@ -894,6 +897,44 @@ export async function saveJevConfigAction(input: {
     return { success: true, message: `已连通（${probe.model}）` };
   } catch (error) {
     return { success: false, message: `保存失败：${String(error)}` };
+  }
+}
+
+export async function saveServiceProxyAction(input: { url: string; services: string[]; clear?: boolean }): Promise<PushSettingsActionResult> {
+  assertNotDemo();
+  const { getWorkflowRepository, getCurrentAccountId, getAccountScopedSettings, JEV_HEALTH_SETTING_KEY } = await import("../lib/workflow-runtime");
+  const { PROXY_SERVICES, SERVICE_PROXY_SETTING_KEY, getServiceProxyConfig, normalizeSocks5Url } = await import("../lib/service-proxy-config");
+  const { serviceProxyUrl } = await import("../lib/service-proxy");
+  try {
+    const repo = getWorkflowRepository();
+    const accountId = await getCurrentAccountId();
+    if (input.clear) {
+      const previous = await getServiceProxyConfig(getAccountScopedSettings(accountId, repo)).catch(() => ({ url: "invalid", services: ["jev" as const] }));
+      await repo.setAccountSetting(accountId, SERVICE_PROXY_SETTING_KEY, JSON.stringify({ url: "", services: [] }));
+      const jevChanged = Boolean(serviceProxyUrl(previous, "jev"));
+      if (jevChanged) await repo.setAccountSetting(accountId, JEV_HEALTH_SETTING_KEY, "untested");
+      revalidatePath("/settings");
+      return { success: true, message: `代理已清除${jevChanged ? "；Jev 请重新保存并测试" : ""}。` };
+    }
+    if (!Array.isArray(input.services) || input.services.some((s) => !PROXY_SERVICES.includes(s as typeof PROXY_SERVICES[number]))) {
+      return { success: false, message: "代理仅支持 AniList、TMDB、PanSou、assrt.net 和 Jev。" };
+    }
+    const previous = await getServiceProxyConfig(getAccountScopedSettings(accountId, repo));
+    const services = PROXY_SERVICES.filter((s) => input.services.includes(s));
+    let url = previous.url;
+    if (input.url.trim()) {
+      try { url = normalizeSocks5Url(input.url); }
+      catch (error) { return { success: false, message: error instanceof Error ? error.message : "代理地址无效。" }; }
+    }
+    if (!url && services.length) return { success: false, message: "请先填写 SOCKS5 代理地址。" };
+    const next = { url, services };
+    await repo.setAccountSetting(accountId, SERVICE_PROXY_SETTING_KEY, JSON.stringify(next));
+    const jevChanged = serviceProxyUrl(previous, "jev") !== serviceProxyUrl(next, "jev");
+    if (jevChanged) await repo.setAccountSetting(accountId, JEV_HEALTH_SETTING_KEY, "untested");
+    revalidatePath("/settings");
+    return { success: true, message: `${services.length ? "代理设置已保存" : "代理已停用"}${jevChanged ? "；Jev 请重新保存并测试" : ""}。` };
+  } catch {
+    return { success: false, message: "代理设置保存失败，请检查配置后重试。" };
   }
 }
 

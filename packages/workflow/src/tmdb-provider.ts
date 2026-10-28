@@ -50,11 +50,12 @@ export const TMDB_DIRECT_BASE_URL = "https://api.themoviedb.org/3";
 export interface TmdbAccess {
   baseURL: string;
   readToken?: string;
+  fetchImpl?: typeof fetch;
 }
 
 function normalizeAccess(access: TmdbAccess): TmdbAccess {
   const baseURL = access.baseURL.replace(/\/+$/, "");
-  return access.readToken === undefined ? { baseURL } : { baseURL, readToken: access.readToken };
+  return { ...access, baseURL };
 }
 
 /** Try each access in order; first success wins, all-fail throws. This is the
@@ -103,7 +104,9 @@ async function fetchViaAccessChain(
         ? TMDB_DIRECT_TIMEOUT_MS
         : TMDB_PROXY_TIMEOUT_MS;
       try {
-        const value = await fetchJson(url, { method: "GET", headers, timeoutMs });
+        const value = await (access.fetchImpl
+          ? defaultFetchJson(url, { method: "GET", headers, timeoutMs }, access.fetchImpl)
+          : fetchJson(url, { method: "GET", headers, timeoutMs }));
         // Self-heal: a hop that answers is not dead — clear any stale mark so
         // later calls go straight through instead of relying on the all-dead
         // retry fallback.
@@ -648,8 +651,8 @@ const TMDB_DIRECT_TIMEOUT_MS = 4500;
  *  hop in the chain, so patience here delays only the error path, not a fallback. */
 const TMDB_PROXY_TIMEOUT_MS = 12000;
 
-async function defaultFetchJson(url: string, init: TmdbFetchInit): Promise<unknown> {
-  const response = await fetch(url, {
+async function defaultFetchJson(url: string, init: TmdbFetchInit, fetchImpl: typeof fetch = fetch): Promise<unknown> {
+  const response = await fetchImpl(url, {
     method: init.method,
     headers: init.headers,
     signal: AbortSignal.timeout(init.timeoutMs ?? TMDB_DIRECT_TIMEOUT_MS),

@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { isAgentMemoryEnabled } from "./agent-memory-server";
 import { getAniListClient } from "./anilist/server-client";
+import { getServiceProxyFetch } from "./service-proxy";
 import { getAniListAcquisitionTarget } from "./anilist/task";
 import { prepareNativeAniListTarget } from "./anilist/native-target";
 import { parseAniListCandidateId } from "./metadata/task-adapter";
@@ -13,6 +14,7 @@ import {
 } from "./login-throttle";
 import {
   PanSouResourceProvider,
+  AssrtSubtitleProvider,
   createProtectedPan115CookieStorageExecutorFromEnv,
   createBootstrapPan115CookieStorageExecutor,
   CompositeResourceProvider,
@@ -973,6 +975,8 @@ export function buildAccountContextResolver(): ResolveAccountWorkerContext {
     const driveProvider =
       (await getAccountStorageCredentials(accountId, connectedStorageId))?.provider ?? "pan115";
     const assrtToken = await getAssrtToken(scoped);
+    const assrtFetch = await getServiceProxyFetch(scoped, "assrt");
+    const assrtProvider = assrtToken && assrtFetch ? new AssrtSubtitleProvider({ token: assrtToken, fetchImpl: assrtFetch }) : undefined;
     // Per-account: undefined unless THIS account set a key, enabled the prefilter
     // and the save-time probe passed. Undefined → the orchestrator keeps the bare
     // provider, so an unconfigured account costs exactly zero Jev calls.
@@ -994,6 +998,7 @@ export function buildAccountContextResolver(): ResolveAccountWorkerContext {
       // their own Kilo/BYO verdict.
       llmConfig,
       ...(assrtToken === undefined ? {} : { assrtToken }),
+      ...(assrtProvider === undefined ? {} : { assrtProvider }),
       ...(jevJudge === undefined ? {} : { jevJudge }),
       agentMemory,
       ...(preferredLanguage === undefined ? {} : { preferredLanguage }),
@@ -1277,6 +1282,8 @@ export async function getTmdbAccesses(
   }
   const proxyBase = env.TMDB_PROXY_BASE_URL?.trim() || DEFAULT_TMDB_PROXY_BASE_URL;
   accesses.push({ baseURL: proxyBase });
+  const fetchImpl = await getServiceProxyFetch(repository, "tmdb");
+  if (fetchImpl) return accesses.map((access) => ({ ...access, fetchImpl }));
   return accesses;
 }
 
@@ -1460,7 +1467,7 @@ export async function resolveJevJudge(
 ): Promise<JevJudge | undefined> {
   const cfg = await getJevConfig(repository, env);
   if (!isJevPrefilterActive(cfg) || !cfg.apiKey) return undefined;
-  return createJevJudge({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl });
+  return createJevJudge({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, fetchImpl: await getServiceProxyFetch(repository, "jev") ?? ((input, init) => globalThis.fetch(input, init)) });
 }
 
 export const DAILY_SWEEP_TIME_SETTING_KEY = "daily_sweep_time";
@@ -2103,7 +2110,7 @@ function seasonMetadataSync(): SeasonMetadataSync | undefined {
       mediaType: "tv",
       seasonNumber,
       qualityPreference: defaultQuality(),
-      metadataProvider: createTmdbMetadataProvider(await getTmdbAccesses(getAccountScopedSettings(await getCurrentAccountId()))),
+      metadataProvider: createTmdbMetadataProvider(await getTmdbAccesses(getAccountScopedSettings(accountId ?? await getCurrentAccountId()))),
     });
     return {
       latestAiredEpisode: target.season.latestAiredEpisode,
@@ -2272,6 +2279,7 @@ async function getWorkerResourceProvider(
             await settings.getSetting(PANSOU_BASE_URL_SETTING_KEY),
           ),
           allowedTypes,
+          fetchImpl: await getServiceProxyFetch(settings, "pansou"),
           // 把每次真实搜索观察到的结论回写,设置页徽章才有东西可读。缺了这条,
           // 告警在生产中永远不触发:保存时探活只写 "ok",而本次事故恰恰是
           // 「保存时好的、之后才挂」。写失败不能影响搜索本身,所以 catch 后

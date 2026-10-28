@@ -1,3 +1,4 @@
+import type { AssrtProviderPort } from "../subtitle-provider.js";
 import type { AgentMemoryStore } from "../agent-memory.js";
 import type { LanguageModel } from "ai";
 import type { MediaTitle } from "../domain.js";
@@ -47,6 +48,7 @@ export interface RunTvAcquisitionV2Request {
   storageProvider?: string;
   /** assrt token (Settings → 字幕来源). Undefined = 字幕流程不触发。 */
   assrtToken?: string;
+  assrtProvider?: AssrtProviderPort;
   /** Optional Jev candidate prefilter (Settings); resolved per account by the worker. */
   jevJudge?: JevJudge;
   deadLinkStore?: DeadLinkStore;
@@ -106,6 +108,7 @@ export async function runTvAcquisitionV2(request: RunTvAcquisitionV2Request): Pr
     ...(request.title.originCountries === undefined ? {} : { originCountries: request.title.originCountries }),
     ...(request.storageProvider === undefined ? {} : { storageProvider: request.storageProvider }),
     ...(request.assrtToken === undefined ? {} : { assrtToken: request.assrtToken }),
+    ...(request.assrtProvider === undefined ? {} : { assrtProvider: request.assrtProvider }),
     ...(request.jevJudge === undefined ? {} : { jevJudge: request.jevJudge }),
     ...(request.deadLinkStore ? { deadLinkStore: request.deadLinkStore } : {}),
     ...(request.memory ? { memory: request.memory } : {}),

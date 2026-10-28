@@ -60,6 +60,7 @@ export type PanSouFetchJson = (url: string, init: PanSouFetchInit) => Promise<un
 
 export interface PanSouResourceProviderOptions {
   baseURL: string;
+  fetchImpl?: typeof fetch | undefined;
   fetchJson?: PanSouFetchJson;
   now?: () => string;
   /** How many times to re-query before treating the result set as complete. */
@@ -97,7 +98,7 @@ export class PanSouResourceProvider implements ResourceProvider {
 
   constructor(options: PanSouResourceProviderOptions) {
     this.baseURL = options.baseURL.replace(/\/+$/, "");
-    this.fetchJson = options.fetchJson ?? defaultFetchJson;
+    this.fetchJson = options.fetchJson ?? ((url, init) => defaultFetchJson(url, init, options.fetchImpl));
     this.now = options.now ?? (() => new Date().toISOString());
     this.maxSearchAttempts = options.maxSearchAttempts ?? 4;
     this.searchPollMs = options.searchPollMs ?? 2500;
@@ -207,8 +208,8 @@ export function createPanSouResourceProviderFromEnv(
   return new PanSouResourceProvider({ baseURL });
 }
 
-async function defaultFetchJson(url: string, init: PanSouFetchInit): Promise<unknown> {
-  const response = await fetch(url, {
+async function defaultFetchJson(url: string, init: PanSouFetchInit, fetchImpl: typeof fetch = fetch): Promise<unknown> {
+  const response = await fetchImpl(url, {
     method: init.method,
     headers: init.headers,
     body: init.body,

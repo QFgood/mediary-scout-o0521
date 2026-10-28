@@ -40,6 +40,7 @@ export function resolveUserPanSouBaseUrl(
 export function buildPanSouProviderChain(input: {
   userBaseURL: string;
   allowedTypes: ResourceType[];
+  fetchImpl?: typeof fetch | undefined;
   /** 每次搜索后把「自建源这次行不行」记下来。设置页徽章每 8s 轮询,绝不能在那条
    *  路径上真打网络,所以只能由真实搜索顺手回写。
    *
@@ -56,9 +57,10 @@ export function buildPanSouProviderChain(input: {
     return new PanSouResourceProvider({
       baseURL: user || DEFAULT_PANSOU_BASE_URL,
       allowedTypes: input.allowedTypes,
+      fetchImpl: input.fetchImpl,
     });
   }
-  const primary = new PanSouResourceProvider({ baseURL: user, allowedTypes: input.allowedTypes });
+  const primary = new PanSouResourceProvider({ baseURL: user, allowedTypes: input.allowedTypes, fetchImpl: input.fetchImpl });
   return new FallbackResourceProvider({
     primary: {
       name: "自建搜索源",
@@ -71,6 +73,7 @@ export function buildPanSouProviderChain(input: {
       provider: new PanSouResourceProvider({
         baseURL: DEFAULT_PANSOU_BASE_URL,
         allowedTypes: input.allowedTypes,
+        fetchImpl: input.fetchImpl,
       }),
     },
   });
