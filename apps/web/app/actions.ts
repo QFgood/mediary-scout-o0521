@@ -743,7 +743,7 @@ export async function savePanSouBaseUrlAction(baseURL: string): Promise<PushSett
       await repository.setAccountSetting(accountId, PANSOU_HEALTH_SETTING_KEY, "");
       return { success: true };
     }
-    // 先做便宜的格式校验再花 8s 探活:少了它,一个漏写 scheme 的地址会拿到
+    // 先做便宜的格式校验再花 15s 探活:少了它,一个漏写 scheme 的地址会拿到
     // 「连不上」这种含糊回复,而真正的问题是格式。agent API 侧本来就有这条校验,
     // 两个入口理应一致。
     const { probePanSou, validatePanSouBaseUrlFormat } = await import("../lib/pansou-probe");

@@ -13,7 +13,7 @@ export type PanSouProbeResult =
   | { ok: true }
   | { ok: false; reason: PanSouProbeFailure; message: string };
 
-const PROBE_TIMEOUT_MS = 8000;
+const PROBE_TIMEOUT_MS = 15_000;
 
 export async function probePanSou(
   baseURL: string,
@@ -80,7 +80,7 @@ function isPanSouShaped(payload: unknown): boolean {
 }
 
 /** 保存前的便宜格式校验。抽出来是为了两个保存入口(设置页 action / agent API)共用
- *  同一条规则并能被直接单测 —— 少了它,一个漏写 scheme 的地址会花 8s 探活然后
+ *  同一条规则并能被直接单测 —— 少了它,一个漏写 scheme 的地址会花 15s 探活然后
  *  拿到「连不上」这种含糊回复,而真正的问题是格式(Copilot 评审指出两侧不一致)。 */
 export function validatePanSouBaseUrlFormat(baseURL: string): { ok: true } | { ok: false; message: string } {
   return /^https?:\/\//.test(baseURL.trim())

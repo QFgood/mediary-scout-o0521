@@ -95,7 +95,7 @@ describe("probePanSou", () => {
 });
 
 describe("validatePanSouBaseUrlFormat", () => {
-  it("拒绝漏写 scheme 的地址（否则要白等 8s 探活才拿到含糊回复）", () => {
+  it("拒绝漏写 scheme 的地址（否则要白等 15s 探活才拿到含糊回复）", () => {
     const r = validatePanSouBaseUrlFormat("localhost:8899");
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.message).toContain("http://");
@@ -121,7 +121,7 @@ describe("probePanSou timeout classification", () => {
       },
     });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.message).toContain("无响应");
+    if (!r.ok) expect(r.message).toContain("15 秒内无响应");
   });
 
   it("仍认 AbortError(手动 abort 的旧路径)", async () => {
@@ -131,7 +131,7 @@ describe("probePanSou timeout classification", () => {
       },
     });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.message).toContain("无响应");
+    if (!r.ok) expect(r.message).toContain("15 秒内无响应");
   });
 });
 
