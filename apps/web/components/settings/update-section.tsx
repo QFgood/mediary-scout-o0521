@@ -6,6 +6,7 @@ import { loadUpdateView } from "../../lib/update-view-server";
 import { resolveCurrentIsOwner } from "../../lib/settings-attention-server";
 import type { UpdaterPhase } from "../../lib/updater-client";
 import { AutoUpdateSwitch, CheckUpdatesButton, CopyCommandButton, UpdateNowButton } from "./update-actions";
+import { PROJECT_COMMITS_URL, PROJECT_GITHUB_URL, PROJECT_RELEASE_NOTES_URL, PROJECT_RELEASES_URL } from "../../lib/project-repository";
 
 const MIGRATE_COMMAND = "./scripts/deploy.sh";
 
@@ -33,7 +34,7 @@ export function ReleaseBlock({ release }: { release: UpdateView["releases"][numb
   return (
     <div className="update-release">
       <div className="update-release-head">
-        <strong>{release.tag}</strong>
+        <strong><a href={`${PROJECT_GITHUB_URL}/releases/tag/${encodeURIComponent(release.tag)}`} target="_blank" rel="noopener noreferrer">{release.tag}</a></strong>
         <span className="update-faint">{release.date}</span>
         {release.isCurrent ? <span className="service-pill">当前</span> : null}
       </div>
@@ -65,7 +66,7 @@ function DesktopUpdateHint({ view }: { view: UpdateView }) {
   return (
     <p className="update-muted">
       桌面版在{" "}
-      <a href="https://github.com/fancydirty/mediary-scout/releases/latest" target="_blank" rel="noopener noreferrer">
+      <a href={PROJECT_RELEASES_URL} target="_blank" rel="noopener noreferrer">
         发布页
       </a>{" "}
       下载新版本安装包。
@@ -163,8 +164,8 @@ export function UpdateTab({
         </section>
       ) : null}
       <section className="panel update-log">
-        <h3 className="update-log-title">更新日志</h3>
-        {view.releases.length === 0 ? <p className="update-muted">暂时查不到更新日志。</p> : null}
+        <h3 className="update-log-title"><a href={PROJECT_RELEASE_NOTES_URL} target="_blank" rel="noopener noreferrer">更新日志 ↗</a></h3>
+        {view.releases.length === 0 ? <p className="update-muted">暂时查不到本项目的版本日志。<a href={PROJECT_COMMITS_URL} target="_blank" rel="noopener noreferrer">查看本项目提交记录</a></p> : null}
         {view.releases.slice(0, 3).map((release) => (
           <ReleaseBlock key={release.tag} release={release} />
         ))}
@@ -177,7 +178,7 @@ export function UpdateTab({
             {view.releases.length > 10 ? (
               <p className="update-muted">
                 这里只列最近 10 个版本，更早的见{" "}
-                <a href="https://github.com/fancydirty/mediary-scout/tree/main/release-notes" target="_blank" rel="noopener noreferrer">
+                <a href={PROJECT_RELEASE_NOTES_URL} target="_blank" rel="noopener noreferrer">
                   全部发布说明
                 </a>
                 。

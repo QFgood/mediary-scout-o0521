@@ -1,19 +1,19 @@
 import { compareReleaseTags, parseReleaseNotes, parseReleaseTag, type ReleaseNote } from "./release-version";
 import { normalizeCommit } from "./deployment-update";
+import { PROJECT_GITHUB_API_URL, PROJECT_GITHUB_URL } from "./project-repository";
 
-const REPO = "fancydirty/mediary-scout";
 /** Every `v…` tag in one response (the tags list API pages at 30, which would lose the
  *  running release once 30 newer ones exist). Old semver tags come back too and are
  *  dropped by parseReleaseTag. Release tags must be lightweight: an annotated tag's
  *  ref points at a tag object, not a commit. */
-const TAGS_URL = `https://api.github.com/repos/${REPO}/git/matching-refs/tags/v`;
+const TAGS_URL = `${PROJECT_GITHUB_API_URL}/git/matching-refs/tags/v`;
 const OK_TTL_MS = 60 * 60 * 1000;
 const FAIL_TTL_MS = 5 * 60 * 1000;
 /** Notes fetched for the newest N releases only (the tab shows 3, "更早" expands to 10). */
 const NOTES_LIMIT = 10;
-const LATEST_RELEASE_URL = `https://api.github.com/repos/${REPO}/releases/latest`;
+const LATEST_RELEASE_URL = `${PROJECT_GITHUB_API_URL}/releases/latest`;
 /** Installers are only trusted from this repo's own release downloads. */
-const DOWNLOAD_PREFIX = `https://github.com/${REPO}/releases/download/`;
+const DOWNLOAD_PREFIX = `${PROJECT_GITHUB_URL}/releases/download/`;
 
 export interface ReleaseEntry {
   tag: string;
@@ -77,7 +77,7 @@ export async function fetchCommitRelation(
 async function loadCommitRelation(key: string, fetchImpl: typeof fetch, started: number): Promise<CommitRelation | null> {
   let relation: CommitRelation | null = null;
   try {
-    const raw = await getText(fetchImpl, `https://api.github.com/repos/${REPO}/compare/${key}`);
+    const raw = await getText(fetchImpl, `${PROJECT_GITHUB_API_URL}/compare/${key}`);
     const status = raw ? (JSON.parse(raw) as { status?: unknown }).status : null;
     relation = typeof status === "string" && RELATIONS.has(status as CommitRelation) ? (status as CommitRelation) : null;
   } catch {
@@ -133,7 +133,7 @@ async function loadReleaseFeed(fetchImpl: typeof fetch, started: number): Promis
         if (index >= NOTES_LIMIT) return { ...release, notes: [] };
         const md = await getText(
           fetchImpl,
-          `https://api.github.com/repos/${REPO}/contents/release-notes/${release.tag}.md?ref=${release.tag}`,
+          `${PROJECT_GITHUB_API_URL}/contents/release-notes/${release.tag}.md?ref=${release.tag}`,
           "application/vnd.github.raw",
         ).catch(() => null);
         return { ...release, notes: md ? parseReleaseNotes(md) : [] };
@@ -198,7 +198,7 @@ function desktopReleaseFrom(body: unknown): DesktopRelease | null {
   if (!dmgUrl || !exeUrl) return null;
   return {
     tag: data.tag_name,
-    pageUrl: `https://github.com/${REPO}/releases/tag/${data.tag_name}`,
+    pageUrl: `${PROJECT_GITHUB_URL}/releases/tag/${data.tag_name}`,
     dmgUrl,
     exeUrl,
   };

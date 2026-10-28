@@ -77,9 +77,9 @@ describe("desktopFeed", () => {
 describe("desktopView", () => {
   const published = {
     tag: "v2026.10.02",
-    pageUrl: "https://github.com/fancydirty/mediary-scout/releases/tag/v2026.10.02",
-    dmgUrl: "https://github.com/fancydirty/mediary-scout/releases/download/v2026.10.02/a.dmg",
-    exeUrl: "https://github.com/fancydirty/mediary-scout/releases/download/v2026.10.02/a.exe",
+    pageUrl: "https://github.com/QFgood/mediary-scout-o0521/releases/tag/v2026.10.02",
+    dmgUrl: "https://github.com/QFgood/mediary-scout-o0521/releases/download/v2026.10.02/a.dmg",
+    exeUrl: "https://github.com/QFgood/mediary-scout-o0521/releases/download/v2026.10.02/a.exe",
   };
 
   it("lists the changelog but offers nothing when the published release cannot be read", () => {
@@ -105,9 +105,9 @@ describe("desktopView", () => {
 describe("desktopDownload", () => {
   const release = {
     tag: "v2026.10.02",
-    pageUrl: "https://github.com/fancydirty/mediary-scout/releases/tag/v2026.10.02",
-    dmgUrl: "https://github.com/fancydirty/mediary-scout/releases/download/v2026.10.02/a.dmg",
-    exeUrl: "https://github.com/fancydirty/mediary-scout/releases/download/v2026.10.02/a.exe",
+    pageUrl: "https://github.com/QFgood/mediary-scout-o0521/releases/tag/v2026.10.02",
+    dmgUrl: "https://github.com/QFgood/mediary-scout-o0521/releases/download/v2026.10.02/a.dmg",
+    exeUrl: "https://github.com/QFgood/mediary-scout-o0521/releases/download/v2026.10.02/a.exe",
   };
 
   it("picks this platform's installer", () => {

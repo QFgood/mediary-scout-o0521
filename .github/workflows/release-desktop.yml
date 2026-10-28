@@ -430,7 +430,7 @@ jobs:
 
           **桌面版**：macOS（Apple 芯片）下载 `.dmg`，Windows 下载 `.exe`。覆盖安装，数据和设置都会保留。
 
-          **Docker 自部署**：按[升级说明](https://github.com/fancydirty/mediary-scout/blob/main/docs/deploy.md#升级)更新。
+          **Docker 自部署**：按[升级说明](https://github.com/QFgood/mediary-scout-o0521/blob/main/docs/deploy.md#升级)更新。
           EOF
           cat "$BODY"
 
