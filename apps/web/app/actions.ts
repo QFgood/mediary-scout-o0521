@@ -691,6 +691,24 @@ export async function saveTmdbApiKeyAction(apiKey: string): Promise<PushSettings
   }
 }
 
+export async function saveAniListApiUrlAction(apiUrl: string): Promise<{ success: boolean; apiUrl?: string; message?: string }> {
+  assertNotDemo();
+  try {
+    const { getWorkflowRepository, getAccountScopedSettings, requireAuthenticatedAccountId } = await import("../lib/workflow-runtime");
+    const { ANILIST_API_URL_SETTING_KEY, normalizeAniListApiUrl, resolveAniListApiUrl } = await import("../lib/anilist/config");
+    const accountId = await requireAuthenticatedAccountId();
+    const saved = apiUrl.trim() ? normalizeAniListApiUrl(apiUrl) : "";
+    // Validate the deployment fallback before clearing an account override.
+    await resolveAniListApiUrl({ getSetting: async () => saved });
+    await getWorkflowRepository().setAccountSetting(accountId, ANILIST_API_URL_SETTING_KEY, saved);
+    revalidatePath("/settings");
+    revalidatePath("/");
+    return { success: true, apiUrl: await resolveAniListApiUrl(getAccountScopedSettings(accountId)) };
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : "保存失败，请重试。" };
+  }
+}
+
 export async function clearTmdbApiKeyAction(): Promise<PushSettingsActionResult> {
   assertNotDemo();
   try {

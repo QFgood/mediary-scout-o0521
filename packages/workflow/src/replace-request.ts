@@ -588,7 +588,7 @@ async function syncedSeasons(
     let entry = { season: state.season, episodes: state.episodes };
     if (sync) {
       try {
-        const meta = await sync({ tmdbId, seasonNumber: state.season.seasonNumber, ...(anilistId === undefined ? {} : { anilistId }) });
+        const meta = await sync({ tmdbId, seasonNumber: state.season.seasonNumber, ...(anilistId === undefined ? {} : { anilistId, accountId: state.accountId }) });
         if (meta) {
           const synced = syncSeasonAgainstMetadata({ ...entry, latestAiredEpisode: meta.latestAiredEpisode, totalEpisodes: meta.totalEpisodes });
           entry = { season: state.title.source === "anilist" ? { ...synced.season, latestAiredSource: "metadata" } : synced.season, episodes: synced.episodes };

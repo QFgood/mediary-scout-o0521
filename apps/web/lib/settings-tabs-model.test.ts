@@ -13,23 +13,21 @@ describe("resolveSettingsTab", () => {
     expect(resolveSettingsTab("services", false)).toBe("services");
   });
 
-  it("remote 仅在远程访问 tab 可见时可达，否则回落默认", () => {
-    expect(resolveSettingsTab("remote", { remote: true })).toBe("remote");
-    expect(resolveSettingsTab("remote", { remote: false })).toBe("drives");
-    // 未给出 remote 可见性 → fail-closed（隐藏态与 tablist 一致）
+  it("已删除的远程访问深链回落到默认页签", () => {
     expect(resolveSettingsTab("remote", {})).toBe("drives");
+    expect(resolveSettingsTab("remote-access", {})).toBe("drives");
   });
 
-  it("legacy 布尔第二参只表示「账号」tab 可见性，remote 仍 fail-closed", () => {
-    // 旧调用点传布尔即「账号可见」；它不该顺带把 remote 也放开。
+  it("legacy 布尔第二参只表示「账号」tab 可见性，update 仍 fail-closed", () => {
+    // 旧调用点传布尔即「账号可见」；它不该顺带把 update 也放开。
     expect(resolveSettingsTab("account", true)).toBe("account");
-    expect(resolveSettingsTab("remote", true)).toBe("drives");
+    expect(resolveSettingsTab("update", true)).toBe("drives");
   });
 
   it("两个受观察 tab 的可见性彼此独立", () => {
-    expect(resolveSettingsTab("account", { account: true, remote: false })).toBe("account");
-    expect(resolveSettingsTab("remote", { account: false, remote: true })).toBe("remote");
-    expect(resolveSettingsTab("account", { account: false, remote: true })).toBe("drives");
+    expect(resolveSettingsTab("account", { account: true, update: false })).toBe("account");
+    expect(resolveSettingsTab("update", { account: false, update: true })).toBe("update");
+    expect(resolveSettingsTab("account", { account: false, update: true })).toBe("drives");
   });
 
   it("未知/缺失 → 默认 drives", () => {
@@ -73,7 +71,7 @@ describe("update tab", () => {
 });
 
 describe("SETTINGS_TABS", () => {
-  it("七个 tab、顺序与标签固定", () => {
+  it("六个 tab、顺序与标签固定", () => {
     expect(SETTINGS_TABS.map((tab) => tab.id)).toEqual([
       "drives",
       "services",
@@ -81,7 +79,6 @@ describe("SETTINGS_TABS", () => {
       "patrol",
       "update",
       "account",
-      "remote",
     ]);
     expect(SETTINGS_TABS.map((tab) => tab.label)).toEqual([
       "网盘",
@@ -90,11 +87,10 @@ describe("SETTINGS_TABS", () => {
       "巡检与通知",
       "更新",
       "账号",
-      "远程访问",
     ]);
   });
 
-  it("受观察（内容为空即隐藏）的 tab 就是 account + remote + update", () => {
-    expect([...OBSERVED_SETTINGS_TABS]).toEqual(["account", "remote", "update"]);
+  it("受观察（内容为空即隐藏）的 tab 就是 account + update", () => {
+    expect([...OBSERVED_SETTINGS_TABS]).toEqual(["account", "update"]);
   });
 });

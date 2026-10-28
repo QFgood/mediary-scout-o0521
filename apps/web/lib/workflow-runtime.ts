@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { isAgentMemoryEnabled } from "./agent-memory-server";
-import { anilistClient } from "./anilist/client";
+import { getAniListClient } from "./anilist/server-client";
 import { getAniListAcquisitionTarget } from "./anilist/task";
 import { prepareNativeAniListTarget } from "./anilist/native-target";
 import { parseAniListCandidateId } from "./metadata/task-adapter";
@@ -846,7 +846,7 @@ export async function queueCandidateTracking(
     const id = parseAniListCandidateId(candidateId);
     if (id === null) return { status: "unsupported", message: "AniList 作品标识无效。" };
     try {
-      const media = await anilistClient.details(id);
+      const media = await (await getAniListClient(accountId)).details(id);
       if (!media) return { status: "unsupported", message: "未找到该 AniList 作品。" };
       const compatibility = await getAniListAcquisitionTarget(media, accountId);
       if (!compatibility.supported) return { status: "unsupported", message: compatibility.reason };
@@ -2087,10 +2087,10 @@ function syncOption(): { syncSeasonMetadata?: SeasonMetadataSync } {
 }
 
 function seasonMetadataSync(): SeasonMetadataSync | undefined {
-  return async ({ tmdbId, seasonNumber, anilistId }) => {
+  return async ({ tmdbId, seasonNumber, anilistId, accountId }) => {
     if (tmdbId === null) {
       if (!anilistId) throw new Error("Missing AniList metadata identity");
-      const media = await anilistClient.details(anilistId);
+      const media = await (await getAniListClient(accountId)).details(anilistId);
       if (!media) throw new Error("AniList title no longer available");
       const native = prepareNativeAniListTarget(media);
       if (!native.supported) throw new Error(native.reason);
