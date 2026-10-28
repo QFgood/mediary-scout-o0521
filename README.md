@@ -22,7 +22,7 @@
 
 你说要哪部电影、剧或番，agent 自己去搜资源，挑最合适的转存进你自己的网盘（夸克 / 115 / 光鸭 / 123 / 天翼），转完读回来确认真的到了，之后缺哪集还会接着补。
 
-本 Fork 新增 **TMDB / AniList 双元数据搜索**及 AniList 动漫榜单。AniList 获取仅支持经核验的整季映射，未知映射会说明原因并禁止提交，详见[开发说明与配置](docs/anilist-development.md)。
+本 Fork 新增 **TMDB / AniList 双元数据搜索**及 AniList 动漫榜单。AniList 电视动画可直接提交独立获取任务，无需 TMDB 季度映射；支持条目详情、媒体库状态与自动追更，详见[开发说明与配置](docs/anilist-development.md)。
 
 点击前往下载：[GitHub Releases](https://github.com/fancydirty/mediary-scout/releases/latest)（macOS / Windows 桌面版）
 

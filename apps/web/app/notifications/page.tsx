@@ -133,11 +133,11 @@ async function NotificationFeed({ connectedStorageId }: { connectedStorageId: st
   const posterByName = new Map<string, string>();
   for (const state of trackedStates) {
     if (state.title.posterPath) {
-      posterByTmdb.set(state.title.tmdbId, state.title.posterPath);
+      if (state.title.tmdbId !== null) posterByTmdb.set(state.title.tmdbId, state.title.posterPath);
       posterByName.set(state.title.title, state.title.posterPath);
     }
   }
-  const fallbackPoster = (report: { posterPath?: string | null; tmdbId?: number; titleName: string }): string | null =>
+  const fallbackPoster = (report: { posterPath?: string | null; tmdbId?: number | null; titleName: string }): string | null =>
     report.posterPath ??
     (report.tmdbId != null ? posterByTmdb.get(report.tmdbId) : undefined) ??
     posterByName.get(report.titleName) ??
@@ -237,7 +237,7 @@ function NotificationCard({
   // The same TMDB poster the push uses — a small thumbnail turns the row into a
   // proper media card (parity with the WeChat/Bark notification).
   const posterPath = report.posterPath ?? fallbackPoster;
-  const posterUrl = posterPath ? `${TMDB_FEED_POSTER}${posterPath}` : null;
+  const posterUrl = posterPath ? (posterPath.startsWith("https://") ? posterPath : `${TMDB_FEED_POSTER}${posterPath}`) : null;
 
   return (
     <article className={`feed-card${posterUrl ? " has-poster" : ""}`} data-created-at={notification.createdAt}>

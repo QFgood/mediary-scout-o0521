@@ -357,7 +357,8 @@ export function scheduledDigestItems(
 /** Title metadata for richer pushes (poster image + tap-through link). */
 export interface NotificationTitleMeta {
   posterPath?: string | null;
-  tmdbId?: number;
+  tmdbId?: number | null;
+  anilistId?: number;
   mediaType?: MediaType;
   year?: number;
 }

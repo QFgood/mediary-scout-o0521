@@ -11,8 +11,13 @@ function folderYear(year: number | string | null | undefined): string {
 export function mediaLibraryFolderName(input: {
   title: string;
   year: number | string | null | undefined;
-  tmdbId: number;
+  tmdbId: number | null;
+  anilistId?: number | undefined;
 }): string {
+  if (input.tmdbId === null) {
+    if (!Number.isSafeInteger(input.anilistId) || input.anilistId! <= 0) throw new Error("Native title requires an AniList ID");
+    return `${input.title} (${folderYear(input.year)}) {anilist-${input.anilistId}}`;
+  }
   return `${input.title} (${folderYear(input.year)}) {tmdb-${input.tmdbId}}`;
 }
 
@@ -42,19 +47,22 @@ export async function ensureMediaLibraryDirectory(input: {
   parentId: string;
   title: string;
   year: number | string | null | undefined;
-  tmdbId: number;
+  tmdbId: number | null;
+  anilistId?: number | undefined;
 }): Promise<string> {
   const preferred = mediaLibraryFolderName({
     title: input.title,
     year: input.year,
     tmdbId: input.tmdbId,
+    ...(input.anilistId === undefined ? {} : { anilistId: input.anilistId }),
   });
   const legacy = legacyMediaLibraryFolderName({ title: input.title, year: input.year });
 
   const children = await input.executor.listChildDirectories(input.parentId);
   const hitPreferred = children.find((child) => child.name === preferred);
   if (hitPreferred) return hitPreferred.id;
-  const hitLegacy = children.find((child) => child.name === legacy);
+  // A native entry must not adopt an untagged series folder: it may contain other seasons.
+  const hitLegacy = input.tmdbId === null ? undefined : children.find((child) => child.name === legacy);
   if (hitLegacy) return hitLegacy.id;
 
   return input.executor.createDirectory({ name: preferred, parentId: input.parentId });

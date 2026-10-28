@@ -87,6 +87,7 @@ export async function runTvAcquisitionV2(request: RunTvAcquisitionV2Request): Pr
       year: request.title.year ?? 0,
       aliases: request.title.aliases ?? [],
       tmdbId: request.title.tmdbId,
+      ...(request.title.anilistId === undefined ? {} : { anilistId: request.title.anilistId }),
     },
     categoryParentId: request.categoryParentId,
     seasons: request.seasons.map((season) => ({
@@ -94,7 +95,8 @@ export async function runTvAcquisitionV2(request: RunTvAcquisitionV2Request): Pr
       latestAiredEpisode: season.latestAiredEpisode,
     })),
     qualityPreference: request.seasons[0]!.qualityPreference,
-    searchHints: getSearchRecipe(profile),
+    searchHints: getSearchRecipe(profile) + (request.title.source === "anilist" ?
+      `\n目标是 AniList 独立动画条目（ID ${request.title.anilistId}）：${request.title.title}。保留完整标题里的续作/篇章信息；内部 S01 仅代表此条目的相对集号分组，不代表整个系列第一季。仅匹配本条目范围内的相对集号，不把同系列其他季或连续总集号自动映射进来。资源仅有连续总集号且对应关系不明时不要转存。` : ""),
     searchProfile: profile,
     ...(qualityGuidance === "" ? {} : { qualityGuidance }),
     ...(request.priorObtained === undefined ? {} : { priorObtained: request.priorObtained }),

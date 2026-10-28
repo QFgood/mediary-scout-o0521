@@ -28,7 +28,8 @@ export interface EnsureSeasonDirectoriesRequest {
   showName: string;
   year: number;
   /** TMDB id — encoded into the show folder name as `{tmdb-N}`. */
-  tmdbId: number;
+  tmdbId: number | null;
+  anilistId?: number | undefined;
   /** The season number(s) this task covers (one, several, or all). */
   seasons: number[];
   /** Run-scoped suffix so each run gets its own staging dir under the show dir. */
@@ -46,6 +47,7 @@ export async function ensureSeasonAcquisitionDirectories(
     title: request.showName,
     year: request.year,
     tmdbId: request.tmdbId,
+    ...(request.anilistId === undefined ? {} : { anilistId: request.anilistId }),
   });
   // Each requested season's Season NN directory under the show dir.
   const seasonDirectoryIds: Record<number, string> = {};

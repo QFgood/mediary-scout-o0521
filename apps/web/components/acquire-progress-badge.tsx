@@ -40,16 +40,18 @@ function useTrickledPercent(serverPercent: number, running: boolean, runKey: str
  */
 export function AcquireProgressBadge({
   tmdbId,
+  anilistId,
   seasonNumber = null,
   storageId,
   title,
 }: {
-  tmdbId: number;
+  tmdbId: number | null;
+  anilistId?: number | undefined;
   seasonNumber?: number | null;
   storageId?: string | undefined;
   title?: string | undefined;
 }) {
-  const run = useActiveRun(tmdbId, seasonNumber, storageId);
+  const run = useActiveRun(tmdbId, seasonNumber, storageId, anilistId);
   const view = inlineProgressView(run);
   // Hooks must run unconditionally — compute the trickled width before any early return.
   const displayPercent = useTrickledPercent(view.percent, view.running, run?.runId ?? "none");

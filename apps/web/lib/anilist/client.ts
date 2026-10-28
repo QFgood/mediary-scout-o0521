@@ -5,7 +5,8 @@ import { mapAniListMedia, type AniListMetadata } from "./mapper";
 const ENDPOINT = "https://graphql.anilist.co";
 const MINUTE = 60_000;
 const FIELDS = `id type isAdult countryOfOrigin title { native romaji english } synonyms
-  description coverImage { large } startDate { year } seasonYear season episodes format status popularity`;
+  description coverImage { large } startDate { year } seasonYear season episodes format status popularity
+  nextAiringEpisode { episode airingAt }`;
 const envelope = z.object({ data: z.unknown().optional(), errors: z.array(z.unknown()).optional() });
 export type AnimeFeed = "season" | "trending" | "upcoming";
 
@@ -57,7 +58,7 @@ export class AniListClient {
     if (!Number.isSafeInteger(id) || id <= 0) throw new Error("AniList ID 无效。");
     return this.cache.load(`details:${id}`, 60 * MINUTE, async () => {
       const data = z.object({ Media: z.unknown().nullable() }).parse(await this.request(
-        `query ($id: Int!) { Media(id: $id, type: ANIME, isAdult: false) { ${FIELDS} } }`, { id },
+        `query ($id: Int!) { Media(id: $id, type: ANIME, isAdult: false) { ${FIELDS} airingSchedule(notYetAired: false, perPage: 50) { nodes { episode airingAt } } } }`, { id },
       ));
       if (data.Media === null) return null;
       const media = mapAniListMedia(data.Media);

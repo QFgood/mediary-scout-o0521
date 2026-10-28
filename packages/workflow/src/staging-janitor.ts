@@ -128,8 +128,8 @@ function seasonsForShow(
       .filter(([, seasons]) => {
         const title = seasons[0]!.title;
         const names = [
-          mediaLibraryFolderName({ title: title.title, year: title.year, tmdbId: title.tmdbId }),
-          legacyMediaLibraryFolderName({ title: title.title, year: title.year }),
+          mediaLibraryFolderName({ title: title.title, year: title.year, tmdbId: title.tmdbId, anilistId: title.anilistId }),
+          ...(title.tmdbId === null ? [] : [legacyMediaLibraryFolderName({ title: title.title, year: title.year })]),
         ];
         return names.includes(show.name);
       })

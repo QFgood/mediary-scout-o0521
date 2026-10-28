@@ -28,6 +28,7 @@ import {
   getWorkflowRepository,
 } from "../lib/workflow-runtime";
 import { showHref } from "@media-track/workflow";
+import { mediaKey } from "@media-track/workflow/scope";
 import type { SearchCandidateCard, TrackedSeasonState } from "@media-track/workflow";
 
 /** Workspace base path: "/" is the account's primary drive, "/w/<id>" a
@@ -173,7 +174,7 @@ async function SearchResults({
     // (anime is a TV-shaped title routed to its own library). Only movies, which
     // have no season menu, are excluded. (Was `!== "tv"`, which wrongly hid every
     // acquired anime's tracked state on the search card.)
-    if (state.title.type === "movie") {
+    if (state.title.type === "movie" || state.title.tmdbId === null) {
       continue;
     }
     const list = trackedByTmdbId.get(state.title.tmdbId) ?? [];
@@ -186,7 +187,7 @@ async function SearchResults({
   // finishes, with no manual refresh. (Previously only the library mounted it,
   // so a result acquired from search stayed stuck on 已请求.)
   const inProgress = await getInProgressTitles(storageId);
-  const inProgressIds = new Set(inProgress.map((title) => title.tmdbId));
+  const inProgressIds = new Set(inProgress.filter((title) => title.tmdbId !== null).map((title) => title.tmdbId));
 
   return (
     <>
@@ -425,9 +426,9 @@ function CandidateCard({
 
 async function LibrarySurface({ mediaType, filter, storageId }: { mediaType: string; filter: string; storageId?: string | undefined }) {
   const [rawWall, inProgress] = await Promise.all([getLibraryWall(storageId), getInProgressTitles(storageId)]);
-  const inProgressIds = new Set(inProgress.map((title) => title.tmdbId));
+  const inProgressIds = new Set(inProgress.map(mediaKey));
   // A title still being fetched shows as a 获取中 placeholder, not (yet) a card.
-  const wall = rawWall.filter((entry) => !inProgressIds.has(entry.tmdbId));
+  const wall = rawWall.filter((entry) => !inProgressIds.has(mediaKey(entry)));
 
   if (wall.length === 0 && inProgress.length === 0) {
     return (

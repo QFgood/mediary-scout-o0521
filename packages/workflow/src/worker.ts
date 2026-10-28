@@ -146,7 +146,8 @@ export async function resolveWorkerDeps(
  * just won't discover episodes aired since tracking began.
  */
 export type SeasonMetadataSync = (input: {
-  tmdbId: number;
+  tmdbId: number | null;
+  anilistId?: number;
   seasonNumber: number;
 }) => Promise<{ latestAiredEpisode: number; totalEpisodes: number } | null>;
 
@@ -219,7 +220,7 @@ function failureReport(
     // on its lowest one (the lock): naming that season would label an S02 request
     // 「第 1 季」. Title-level, like its success report (buildReplacementReport).
     seasonLabel:
-      claimed.title.type !== "movie" && claimed.workflowRun.kind !== "replace_request" && claimed.season.seasonNumber
+      claimed.title.source !== "anilist" && claimed.title.type !== "movie" && claimed.workflowRun.kind !== "replace_request" && claimed.season.seasonNumber
         ? `第 ${claimed.season.seasonNumber} 季`
         : null,
     status,
@@ -228,6 +229,7 @@ function failureReport(
     realMissing: [],
     posterPath: claimed.title.posterPath ?? null,
     tmdbId: claimed.title.tmdbId,
+    ...(claimed.title.anilistId !== undefined ? { anilistId: claimed.title.anilistId } : {}),
     mediaType: claimed.title.type,
     year: claimed.title.year,
   };
@@ -747,6 +749,7 @@ async function patrolTrackedState(args: {
       try {
         const meta = await input.syncSeasonMetadata({
           tmdbId: state.title.tmdbId,
+          ...(state.title.anilistId !== undefined ? { anilistId: state.title.anilistId } : {}),
           seasonNumber: state.season.seasonNumber,
         });
         if (meta) {
@@ -756,7 +759,7 @@ async function patrolTrackedState(args: {
             latestAiredEpisode: meta.latestAiredEpisode,
             totalEpisodes: meta.totalEpisodes,
           });
-          season = synced.season;
+          season = state.title.source === "anilist" ? { ...synced.season, latestAiredSource: "metadata" } : synced.season;
           episodes = synced.episodes;
         }
       } catch (error) {

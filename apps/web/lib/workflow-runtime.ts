@@ -1,7 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
 import { isAgentMemoryEnabled } from "./agent-memory-server";
 import { anilistClient } from "./anilist/client";
-import { getAniListTaskCompatibility } from "./anilist/task";
+import { getAniListAcquisitionTarget } from "./anilist/task";
+import { prepareNativeAniListTarget } from "./anilist/native-target";
 import { parseAniListCandidateId } from "./metadata/task-adapter";
 import { cache } from "react";
 import {
@@ -632,13 +633,14 @@ export function notificationWindowSince(): string {
 /** 取消追踪:解析当前工作区 scope 后委派仓库删除该剧/季的追踪记录(不碰网盘文件)。
  *  mediaKind 区分 movie/tv 命名空间(同一数字 id 可同时是电影和剧集)。 */
 export async function untrackTrackedTitle(
-  tmdbId: number,
+  tmdbId: number | null,
   storageId: string | undefined,
   mediaKind: "movie" | "tv",
   seasonNumber?: number,
+  anilistId?: number,
 ): Promise<{ status: "untracked" | "not_found" | "in_flight"; removedSeasons: number }> {
   const scope = await getActiveWorkspaceScope(storageId);
-  return getWorkflowRepository().untrackTitle(tmdbId, scope, mediaKind, seasonNumber);
+  return getWorkflowRepository().untrackTitle(tmdbId, scope, mediaKind, seasonNumber, anilistId);
 }
 
 /** Resolve a global page's (通知/活动/设置) active workspace from its `?w` param.
@@ -846,7 +848,7 @@ export async function queueCandidateTracking(
     try {
       const media = await anilistClient.details(id);
       if (!media) return { status: "unsupported", message: "未找到该 AniList 作品。" };
-      const compatibility = await getAniListTaskCompatibility(media, accountId);
+      const compatibility = await getAniListAcquisitionTarget(media, accountId);
       if (!compatibility.supported) return { status: "unsupported", message: compatibility.reason };
       const request = await queueTrackingInitialization({
         ...compatibility.target, repository: getWorkflowRepository(),
@@ -1997,7 +1999,7 @@ async function runScheduledType3Now(options?: { force?: boolean }): Promise<Sche
   let heldBack = false;
   try {
     await hydratePan115CookieFromDb();
-    const sync = tmdbSeasonMetadataSync();
+    const sync = seasonMetadataSync();
     const accountId = await getCurrentAccountId();
     const { model, llmConfig, preferredLanguage, qualityPreference } = await getAgentModel(getAccountScopedSettings(accountId));
     const parents = await getWorkerStorageParents(accountId);
@@ -2076,21 +2078,26 @@ async function runScheduledType3Now(options?: { force?: boolean }): Promise<Sche
 }
 
 /**
- * The Type 3 sweep's TMDB re-sync (the GUI's `sync_all`): refresh each tracked
- * season's aired/total from TMDB so the sweep discovers episodes that aired
- * after tracking began. Returns undefined when TMDB isn't configured, leaving
- * the sweep on stored counts.
+ * Refresh each tracked target from its own metadata provider. Native AniList
+ * entries must never be sent to the TMDB endpoint during patrol or replacement.
  */
 function syncOption(): { syncSeasonMetadata?: SeasonMetadataSync } {
-  const sync = tmdbSeasonMetadataSync();
+  const sync = seasonMetadataSync();
   return sync ? { syncSeasonMetadata: sync } : {};
 }
 
-function tmdbSeasonMetadataSync(): SeasonMetadataSync | undefined {
-  if (process.env.MEDIA_TRACK_SEARCH_PROVIDER !== "tmdb") {
-    return undefined;
-  }
-  return async ({ tmdbId, seasonNumber }) => {
+function seasonMetadataSync(): SeasonMetadataSync | undefined {
+  return async ({ tmdbId, seasonNumber, anilistId }) => {
+    if (tmdbId === null) {
+      if (!anilistId) throw new Error("Missing AniList metadata identity");
+      const media = await anilistClient.details(anilistId);
+      if (!media) throw new Error("AniList title no longer available");
+      const native = prepareNativeAniListTarget(media);
+      if (!native.supported) throw new Error(native.reason);
+      if (native.target.season.latestAiredSource === "unknown") return null;
+      return { latestAiredEpisode: native.target.season.latestAiredEpisode, totalEpisodes: native.target.season.totalEpisodes };
+    }
+    if (process.env.MEDIA_TRACK_SEARCH_PROVIDER !== "tmdb") return null;
     const target = await prepareTrackingTarget({
       tmdbId,
       mediaType: "tv",

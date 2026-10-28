@@ -56,6 +56,7 @@ export interface V2BridgeSeasonIntent {
    *  that still has a real gap. Kept only so callers can pass their row through. */
   status?: SeasonStatus;
   metadataOrigin?: TrackedSeason["metadataOrigin"];
+  latestAiredSource?: TrackedSeason["latestAiredSource"];
 }
 
 export interface BridgedSeasonResult {
@@ -222,7 +223,7 @@ function bridgeSeason(input: {
     storageDirectoryId: v2.directories.seasonDirectoryIds[intent.seasonNumber] ?? "",
     totalEpisodes: intent.totalEpisodes,
     latestAiredEpisode: intent.latestAiredEpisode,
-    latestAiredSource: "metadata",
+    latestAiredSource: intent.latestAiredSource ?? "metadata",
     ...(intent.metadataOrigin ? { metadataOrigin: intent.metadataOrigin } : {}),
   };
 
@@ -258,7 +259,8 @@ function buildNotification(input: {
 }): NotificationEvent {
   const { title, mode, seasons, status, workflowRunId } = input;
   const noCoverage = status === "no_coverage";
-  const titleMeta = { posterPath: title.posterPath ?? null, tmdbId: title.tmdbId, mediaType: title.type, year: title.year };
+  const titleMeta = { posterPath: title.posterPath ?? null, tmdbId: title.tmdbId, mediaType: title.type, year: title.year,
+    ...(title.anilistId !== undefined ? { anilistId: title.anilistId } : {}) };
 
   if (mode === "replace") {
     const report = buildReplacementReport({
@@ -323,6 +325,7 @@ function buildNotification(input: {
     meta: titleMeta,
     ...sizeInput(input),
   });
+  if (title.source === "anilist") report.seasonLabel = null;
 
   if (mode === "type3") {
     return {
@@ -342,7 +345,7 @@ function buildNotification(input: {
                 report.status === "airing" && newlyObtained.length === 0
                 ? "already_current"
                 : "episodes_restored",
-      title: `${report.titleName} ${report.seasonLabel}`,
+      title: report.seasonLabel ? `${report.titleName} ${report.seasonLabel}` : report.titleName,
       body: formatReportPushText(report),
       createdAt: input.now(),
       trigger: "scheduled",
@@ -354,7 +357,7 @@ function buildNotification(input: {
     id: `notification_${workflowRunId}`,
     workflowRunId,
     kind: report.status === "failed" ? "transfer_failed" : noCoverage ? "no_coverage" : "tracking_initialized",
-    title: `${report.titleName} ${report.seasonLabel}`,
+    title: report.seasonLabel ? `${report.titleName} ${report.seasonLabel}` : report.titleName,
     body: formatReportPushText(report),
     createdAt: input.now(),
     trigger: "user",

@@ -32,6 +32,7 @@ import { useDemoAcquiredTmdbIds } from "../lib/use-demo-session";
 export function RequestTrackButton({
   candidateId,
   tmdbId,
+  anilistId,
   actionState = "can_request",
   label = "获取",
   disabled = false,
@@ -42,6 +43,7 @@ export function RequestTrackButton({
   /** Production: the candidate's tmdbId, so the in-progress badge can match this
    *  title's live run in /api/activity and show inline progress. */
   tmdbId?: number;
+  anilistId?: number | undefined;
   actionState?: SearchActionState;
   label?: string;
   disabled?: boolean;
@@ -97,8 +99,8 @@ export function RequestTrackButton({
     // With a tmdbId, upgrade to an inline live-progress bar while the run is
     // actually running (falls back to the static 已请求 pill when queued/finished);
     // without one (legacy callers), keep the static pill.
-    return tmdbId != null ? (
-      <AcquireProgressBadge tmdbId={tmdbId} seasonNumber={null} storageId={storageId} title={result?.message} />
+    return tmdbId != null || anilistId != null ? (
+      <AcquireProgressBadge tmdbId={tmdbId ?? null} anilistId={anilistId} seasonNumber={null} storageId={storageId} title={result?.message} />
     ) : (
       <RequestedBadge title={result?.message} storageId={storageId} />
     );

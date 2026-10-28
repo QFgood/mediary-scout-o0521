@@ -17,6 +17,8 @@ export const anilistMediaSchema = z.object({
   format: z.string().nullable(),
   status: z.string().nullable(),
   popularity: z.number().nonnegative().nullable(),
+  nextAiringEpisode: z.object({ episode: z.number().int().positive(), airingAt: z.number().int() }).nullable().optional(),
+  airingSchedule: z.object({ nodes: z.array(z.object({ episode: z.number().int().positive(), airingAt: z.number().int() })) }).nullable().optional(),
 });
 
 export type AniListMedia = z.infer<typeof anilistMediaSchema>;
@@ -49,5 +51,7 @@ export function mapAniListMedia(raw: unknown): AniListMetadata | null {
     overview: plainDescription(media.description),
     episodeCount: media.episodes, format: media.format, status: media.status,
     broadcastSeason: media.season, popularity: media.popularity,
+    ...(media.nextAiringEpisode === undefined ? {} : { nextAiringEpisode: media.nextAiringEpisode }),
+    ...(media.airingSchedule ? { airingEpisodes: media.airingSchedule.nodes } : {}),
   };
 }

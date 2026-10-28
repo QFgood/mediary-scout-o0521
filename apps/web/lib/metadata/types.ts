@@ -18,6 +18,8 @@ export type UnifiedMedia = MediaIdentity & {
   status?: string | null;
   broadcastSeason?: string | null;
   popularity?: number | null;
+  nextAiringEpisode?: { episode: number; airingAt: number } | null;
+  airingEpisodes?: Array<{ episode: number; airingAt: number }>;
 };
 
 export function mediaIdentityKey(identity: MediaIdentity): string {

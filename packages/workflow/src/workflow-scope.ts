@@ -278,3 +278,29 @@ export function showHref(
   }
   return href;
 }
+
+export interface MediaAddress {
+  tmdbId: number | null;
+  anilistId?: number | undefined;
+  type?: "movie" | "tv" | "anime";
+}
+
+export function mediaKey(media: MediaAddress): string {
+  return media.anilistId != null && media.tmdbId === null
+    ? `anilist_anime_${media.anilistId}`
+    : `tmdb_${media.type === "movie" ? "movie" : "tv"}_${media.tmdbId}`;
+}
+
+export function mediaHref(media: MediaAddress, from: "search" | "library", storageId: string | undefined): string {
+  if (media.tmdbId !== null) return showHref(media.tmdbId, from, storageId, media.type);
+  if (!Number.isSafeInteger(media.anilistId) || media.anilistId! <= 0) throw new Error("Missing native media identity");
+  const params = new URLSearchParams({ from });
+  if (storageId) params.set("w", storageId);
+  return `/anime/anilist/${media.anilistId}?${params}`;
+}
+
+/** Native artwork is already an HTTPS URL; legacy TMDB paths remain unchanged. */
+export function mediaPosterUrl(path: string | null | undefined, size = "w342"): string | null {
+  if (!path) return null;
+  return path.startsWith("https://") ? path : `https://image.tmdb.org/t/p/${size}${path}`;
+}

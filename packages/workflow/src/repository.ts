@@ -352,10 +352,11 @@ export interface WorkflowRepository extends DeadLinkStore, AgentMemoryStore, Use
    *  先预留的让这里 in_flight,先取消的让预留 not_tracked,不会两边都成功。
    *  不碰网盘文件。 */
   untrackTitle(
-    tmdbId: number,
+    tmdbId: number | null,
     scope: WorkflowScope,
     mediaKind: "movie" | "tv",
     seasonNumber?: number,
+    anilistId?: number,
   ): Promise<{ status: "untracked" | "not_found" | "in_flight"; removedSeasons: number }>;
   /** Manual retry of a terminally `failed` run: reset it to immediately-claimable
    *  queued (counters cleared) so the worker re-runs it. Refuses (not_retriable)
@@ -1408,10 +1409,11 @@ export class InMemoryWorkflowRepository implements WorkflowRepository {
   }
 
   async untrackTitle(
-    tmdbId: number,
+    tmdbId: number | null,
     scope: WorkflowScope,
     mediaKind: "movie" | "tv",
     seasonNumber?: number,
+    anilistId?: number,
   ): Promise<{ status: "untracked" | "not_found" | "in_flight"; removedSeasons: number }> {
     // Enumerate this drive's target seasons for the title (latest-by-season dedup).
     // Match mediaKind too: TMDB movie/tv id namespaces collide (movie 278 ≠ tv 278),
@@ -1420,7 +1422,7 @@ export class InMemoryWorkflowRepository implements WorkflowRepository {
     const wantMovie = mediaKind === "movie";
     const states = (await this.listTrackedSeasonStates(scope)).filter(
       (state) =>
-        state.title.tmdbId === tmdbId &&
+        (tmdbId === null ? anilistId !== undefined && state.title.tmdbId === null && state.title.anilistId === anilistId : state.title.tmdbId === tmdbId) &&
         (state.title.type === "movie") === wantMovie &&
         (seasonNumber === undefined || state.season.seasonNumber === seasonNumber),
     );

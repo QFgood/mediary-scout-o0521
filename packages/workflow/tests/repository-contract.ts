@@ -34,6 +34,27 @@ export function runRepositoryContract(name: string, harness: RepoHarness): void 
       return repo;
     }
 
+    it("persists native AniList identities without TMDB collisions and untracks one exact source only", async () => {
+      const repo = await fresh();
+      const base = workflowPersistenceFixture();
+      await repo.saveWorkflowRunSnapshot(base);
+      for (const id of [100, 101]) {
+        const title = { ...base.title, id: `anilist_anime_${id}`, source: "anilist" as const, tmdbId: null, anilistId: id };
+        const season = { ...base.season, id: `${title.id}_s1`, mediaTitleId: title.id };
+        await repo.saveWorkflowRunSnapshot({ ...base, title, season,
+          workflowRun: { ...base.workflowRun, id: `native_${id}`, trackedSeasonId: season.id },
+          episodes: base.episodes.map((episode) => ({ ...episode, trackedSeasonId: season.id })),
+          resourceSnapshots: [], decisions: [], transferAttempts: [], notifications: [],
+        });
+      }
+      expect((await repo.listTrackedSeasonStates()).map((state) => state.title.id).sort()).toEqual(["anilist_anime_100", "anilist_anime_101", base.title.id].sort());
+      const scope = { accountId: "acct_default", connectedStorageId: null };
+      expect((await repo.untrackTitle(null, scope, "tv")).status).toBe("not_found");
+      expect((await repo.untrackTitle(null, scope, "tv", undefined, 100)).status).toBe("untracked");
+      expect((await repo.listTrackedSeasonStates()).map((state) => state.title.id).sort()).toEqual(["anilist_anime_101", base.title.id].sort());
+      expect((await repo.getWorkflowRunSnapshot("native_101"))?.title).toMatchObject({ tmdbId: null, anilistId: 101, source: "anilist" });
+    });
+
     describe("settings", () => {
       it("round-trips an instance setting and returns null for unknown keys", async () => {
         const repo = await fresh();

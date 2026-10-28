@@ -72,9 +72,9 @@ export function buildNotifyMessage(
     : report.year
       ? `${report.titleName} (${report.year})`
       : report.titleName;
-  const imageUrl = report.posterPath ? `${posterBase}${report.posterPath}` : undefined;
+  const imageUrl = report.posterPath ? (report.posterPath.startsWith("https://") ? report.posterPath : `${posterBase}${report.posterPath}`) : undefined;
   const webBase = opts?.webBaseUrl?.replace(/\/$/, "");
-  const url = webBase && report.tmdbId !== undefined ? `${webBase}/show/${report.tmdbId}` : undefined;
+  const url = webBase ? report.tmdbId != null ? `${webBase}/show/${report.tmdbId}` : report.anilistId ? `${webBase}/anime/anilist/${report.anilistId}` : undefined : undefined;
 
   // No poster in the body: Server酱's markdown image rendered full-bleed and the
   // user preferred the clean daily-digest layout (structured text only). The head

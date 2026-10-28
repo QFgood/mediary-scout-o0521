@@ -1017,10 +1017,11 @@ export class SqliteWorkflowRepository implements WorkflowRepository {
   }
 
   async untrackTitle(
-    tmdbId: number,
+    tmdbId: number | null,
     scope: WorkflowScope,
     mediaKind: "movie" | "tv",
     seasonNumber?: number,
+    anilistId?: number,
   ): Promise<{ status: "untracked" | "not_found" | "in_flight"; removedSeasons: number }> {
     // Enumerate this drive's target seasons for the title (reuse scoped read).
     // Match mediaKind too: TMDB movie/tv id namespaces collide (movie 278 ≠ tv 278),
@@ -1029,7 +1030,7 @@ export class SqliteWorkflowRepository implements WorkflowRepository {
     const wantMovie = mediaKind === "movie";
     const states = (await this.listTrackedSeasonStates(scope)).filter(
       (state) =>
-        state.title.tmdbId === tmdbId &&
+        (tmdbId === null ? anilistId !== undefined && state.title.tmdbId === null && state.title.anilistId === anilistId : state.title.tmdbId === tmdbId) &&
         (state.title.type === "movie") === wantMovie &&
         (seasonNumber === undefined || state.season.seasonNumber === seasonNumber),
     );

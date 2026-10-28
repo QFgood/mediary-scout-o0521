@@ -21,7 +21,8 @@ export interface ActivityActiveRun {
   /** What the run does. Cancelling a queued acquisition takes the title out of the
    *  library; cancelling a replace_request only drops that attempt (the feed says so). */
   kind: WorkflowKind;
-  tmdbId: number;
+  tmdbId: number | null;
+  anilistId?: number;
   title: string;
   year: number | null;
   type: MediaType;
@@ -101,7 +102,7 @@ export async function getActivityView(input: {
   const posterByName = new Map<string, string>();
   for (const state of trackedStates) {
     if (state.title.posterPath) {
-      posterByTmdb.set(state.title.tmdbId, state.title.posterPath);
+      if (state.title.tmdbId !== null) posterByTmdb.set(state.title.tmdbId, state.title.posterPath);
       posterByName.set(state.title.title, state.title.posterPath);
     }
   }
@@ -125,6 +126,7 @@ export async function getActivityView(input: {
       runId: snapshot.workflowRun.id,
       kind: snapshot.workflowRun.kind,
       tmdbId: snapshot.title.tmdbId,
+      ...(snapshot.title.anilistId === undefined ? {} : { anilistId: snapshot.title.anilistId }),
       title: snapshot.title.title,
       year: snapshot.title.year ?? null,
       type: snapshot.title.type,

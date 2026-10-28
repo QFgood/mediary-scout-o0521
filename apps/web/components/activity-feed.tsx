@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, ChevronDown, ChevronRight, Clock3, Loader2, RotateCcw, TriangleAlert, X } from "lucide-react";
-import { showHref } from "@media-track/workflow/scope";
+import { mediaHref, mediaPosterUrl } from "@media-track/workflow/scope";
 import type {
   ActivityActiveRun,
   ActivityCompletedItem,
@@ -108,7 +108,7 @@ export function ActivityFeed({ storageId }: { storageId?: string | undefined }) 
 function poster(posterPath: string | null, title: string, tone: string) {
   return posterPath ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img className="act-poster" src={`${POSTER}${posterPath}`} alt="" loading="lazy" />
+    <img className="act-poster" src={mediaPosterUrl(posterPath, "w185")!} alt="" loading="lazy" />
   ) : (
     <span className={`act-poster act-poster-fallback tone-${tone}`}>{title.slice(0, 2)}</span>
   );
@@ -116,6 +116,7 @@ function poster(posterPath: string | null, title: string, tone: string) {
 
 /** 「第 1/2 季」, or 「换源」 for a replace run (title-level). */
 function seasonLabel(run: ActivityActiveRun): string {
+  if (run.anilistId && run.tmdbId === null) return "AniList 条目";
   return activeRunLabel({ ...run, seasonNumbers: run.seasonNumbers ?? [] });
 }
 
@@ -126,7 +127,7 @@ function RunningRow({ run, storageId }: { run: ActivityActiveRun; storageId?: st
       ? `已确认 ${run.progress.obtained ?? 0} / ${run.progress.needed} 集`
       : null;
   return (
-    <Link className="act-row act-row-active" href={showHref(run.tmdbId, "library", storageId, run.type)}>
+    <Link className="act-row act-row-active" href={mediaHref(run, "library", storageId)}>
       {poster(run.posterPath, run.title, "info")}
       <div className="act-row-body">
         <div className="act-row-head">

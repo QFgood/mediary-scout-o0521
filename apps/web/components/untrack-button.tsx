@@ -16,13 +16,15 @@ import { isDemoModeClient } from "../lib/demo-mode";
  */
 export function UntrackButton({
   tmdbId,
+  anilistId,
   storageId,
   mediaKind,
   seasonNumber,
   basePath,
   label = "取消追踪",
 }: {
-  tmdbId: number;
+  tmdbId: number | null;
+  anilistId?: number | undefined;
   /** Tree model: the active workspace drive. REQUIRED (value may be undefined = primary). */
   storageId: string | undefined;
   /** Disambiguate TMDB movie/tv id namespaces (same number can be both). */
@@ -51,6 +53,7 @@ export function UntrackButton({
         () =>
           untrackTitleAction({
             tmdbId,
+            ...(anilistId === undefined ? {} : { anilistId }),
             storageId,
             mediaKind,
             ...(seasonNumber !== undefined ? { seasonNumber } : {}),

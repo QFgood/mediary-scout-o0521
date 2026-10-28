@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
     return {
       title: state.title.title,
       tmdbId: state.title.tmdbId,
+      ...(state.title.anilistId === undefined ? {} : { source: "anilist", anilistId: state.title.anilistId }),
       type: state.title.type,
       year: state.title.year,
       seasonNumber: state.season.seasonNumber,
