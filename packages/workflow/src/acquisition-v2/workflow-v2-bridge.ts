@@ -55,6 +55,7 @@ export interface V2BridgeSeasonIntent {
    *  completed iff fully acquired), so a stale "completed" never sticks a season
    *  that still has a real gap. Kept only so callers can pass their row through. */
   status?: SeasonStatus;
+  metadataOrigin?: TrackedSeason["metadataOrigin"];
 }
 
 export interface BridgedSeasonResult {
@@ -222,6 +223,7 @@ function bridgeSeason(input: {
     totalEpisodes: intent.totalEpisodes,
     latestAiredEpisode: intent.latestAiredEpisode,
     latestAiredSource: "metadata",
+    ...(intent.metadataOrigin ? { metadataOrigin: intent.metadataOrigin } : {}),
   };
 
   return { season, episodes };

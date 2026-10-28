@@ -90,6 +90,16 @@ export interface TrackedSeason {
   totalEpisodes: number;
   latestAiredEpisode: number;
   latestAiredSource: LatestAiredSource;
+  /** Original selection retained when a reviewed AniList entry maps to this TMDB season.
+   * Stored in the existing season JSON payload; no migration or fake TMDB ID. */
+  metadataOrigin?: {
+    source: "anilist";
+    anilistId: number;
+    title: string;
+    aliases: string[];
+    episodeCount: number;
+    evidenceUrl: string;
+  };
 }
 
 export interface EpisodeState {
