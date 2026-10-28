@@ -13,6 +13,8 @@ import { QualityPreferenceForm } from "../../components/quality-preference-form"
 import { LlmConfigForm } from "../../components/llm-config-form";
 import { RestoreFreeLlmButton } from "../../components/restore-free-llm-button";
 import { TmdbApiKeyForm } from "../../components/tmdb-api-key-form";
+import { AniListApiUrlForm } from "../../components/anilist-api-url-form";
+import { DEFAULT_ANILIST_API_URL, resolveAniListApiUrl } from "../../lib/anilist/config";
 import { AssrtTokenForm } from "../../components/assrt-token-form";
 import { ProwlarrConfigForm } from "../../components/prowlarr-config-form";
 import { JevPrefilterForm } from "../../components/jev-prefilter-form";
@@ -33,7 +35,6 @@ import { PatrolNowButton } from "../../components/patrol-now-button";
 import { SettingsTabs } from "../../components/settings-tabs";
 import { PasswordChangeForm } from "../../components/password-change-form";
 import { AccountAdminPanel } from "../../components/account-admin-panel";
-import { RemoteAccessSection } from "../../components/settings/remote-access-section";
 import { UpdateSection } from "../../components/settings/update-section";
 import { GitHubNameplate } from "../../components/github-nameplate";
 import { SettingsActionInbox } from "../../components/settings-action-inbox";
@@ -131,6 +132,9 @@ export default function SettingsPage({
                     <TmdbApiKeySection />
                   </Suspense>
                   <Suspense fallback={<div className="skeleton skeleton-heading" />}>
+                    <AniListApiSection />
+                  </Suspense>
+                  <Suspense fallback={<div className="skeleton skeleton-heading" />}>
                     <ResourceProviderSection />
                   </Suspense>
                   <Suspense fallback={<div className="skeleton skeleton-heading" />}>
@@ -172,18 +176,6 @@ export default function SettingsPage({
                     <AccountManagementSection />
                   </Suspense>
                 </>
-              }
-              // Fallback is null, not a skeleton: a skeleton element would stream
-              // into the slot and the empty-slot observer would read the tab as
-              // visible before we know whether the viewer is the 站主.
-              remote={
-                // 桌面版没有远程访问功能(自托管才有):slot 置空 →
-                // SettingsTabs 观察不到内容 → 「远程访问」tab 不出现。
-                resolveIsDesktop() ? null : (
-                  <Suspense fallback={null}>
-                    <RemoteAccessSection searchParams={searchParams} />
-                  </Suspense>
-                )
               }
             />
             </Suspense>
@@ -507,6 +499,22 @@ async function TmdbApiKeySection() {
       </ServiceBlock>
     </section>
   );
+}
+
+async function AniListApiSection() {
+  await connection();
+  const apiUrl = await resolveAniListApiUrl(getAccountScopedSettings(await getCurrentAccountId()));
+  return <section className="panel" style={{ maxWidth: 720, marginTop: 24 }}>
+    <div className="panel-header"><div>
+      <h2 className="panel-title"><Clapperboard size={16} aria-hidden style={{ verticalAlign: "-2px", marginRight: 8 }} />AniList 元数据</h2>
+      <p className="panel-note">日本动画元数据来源</p>
+    </div></div>
+    <ServiceBlock name="AniList" pills={[{ label: apiUrl === DEFAULT_ANILIST_API_URL ? "官方 API" : "自定义 API", tone: apiUrl === DEFAULT_ANILIST_API_URL ? "neutral" : "on" }]}
+      summary="动画搜索、海报、集数与播出进度的来源。可填写 AniList GraphQL 接口或兼容代理的完整地址。"
+      details={<p>公共 AniList 元数据 API 无需 API Key。默认使用官方接口；自定义地址需兼容 AniList GraphQL。保存后，当前账号的搜索、详情、榜单、获取和追更立即使用新地址。恢复默认后使用部署默认地址，未配置时使用官方接口。</p>}>
+      <AniListApiUrlForm apiUrl={apiUrl} />
+    </ServiceBlock>
+  </section>;
 }
 
 const PANSOU_SELF_HOST_TUTORIAL_URL =

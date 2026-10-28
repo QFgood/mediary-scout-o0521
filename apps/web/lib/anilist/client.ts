@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { AniListCache } from "./cache";
 import { mapAniListMedia, type AniListMetadata } from "./mapper";
+import { DEFAULT_ANILIST_API_URL, normalizeAniListApiUrl } from "./config";
 
-const ENDPOINT = "https://graphql.anilist.co";
 const MINUTE = 60_000;
 const FIELDS = `id type isAdult countryOfOrigin title { native romaji english } synonyms
   description coverImage { large } startDate { year } seasonYear season episodes format status popularity
@@ -17,15 +17,17 @@ export function currentAnimeSeason(now: Date): { season: string; seasonYear: num
 export class AniListClient {
   private readonly cache: AniListCache;
   private retryAfter = 0;
+  private readonly endpoint: string;
 
-  constructor(private readonly options: { fetch?: typeof fetch; now?: () => number; timeoutMs?: number } = {}) {
+  constructor(private readonly options: { fetch?: typeof fetch; now?: () => number; timeoutMs?: number; endpoint?: string } = {}) {
     this.cache = new AniListCache(options.now);
+    this.endpoint = normalizeAniListApiUrl(options.endpoint ?? DEFAULT_ANILIST_API_URL);
   }
 
   private async request(query: string, variables: Record<string, unknown>): Promise<unknown> {
     const now = this.options.now ?? Date.now;
     if (now() < this.retryAfter) throw new Error("AniList 请求频率受限，请稍后重试。");
-    const response = await (this.options.fetch ?? fetch)(ENDPOINT, {
+    const response = await (this.options.fetch ?? fetch)(this.endpoint, {
       method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({ query, variables }), signal: AbortSignal.timeout(this.options.timeoutMs ?? 8_000),
       cache: "no-store",

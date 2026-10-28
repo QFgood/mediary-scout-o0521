@@ -10,7 +10,7 @@ import { RequestTrackButton } from "../../../../components/request-track-button"
 import { AcquireProgressBadge } from "../../../../components/acquire-progress-badge";
 import { AcquiringPoller } from "../../../../components/acquiring-poller";
 import { UntrackButton } from "../../../../components/untrack-button";
-import { anilistClient } from "../../../../lib/anilist/client";
+import { getAniListClient } from "../../../../lib/anilist/server-client";
 import { prepareNativeAniListTarget } from "../../../../lib/anilist/native-target";
 import { isDemoMode } from "../../../../lib/demo-mode";
 import { getWorkflowRepository, resolveGlobalWorkspace } from "../../../../lib/workflow-runtime";
@@ -46,7 +46,7 @@ async function AniListDetail({ params, searchParams }: {
   let unavailable = "未找到该 AniList 动画条目。";
   if (!target && valid) {
     try {
-      const media = await anilistClient.details(id);
+      const media = await (await getAniListClient(workspace.accountId)).details(id);
       if (media) {
         const prepared = prepareNativeAniListTarget(media);
         if (prepared.supported) target = prepared.target;

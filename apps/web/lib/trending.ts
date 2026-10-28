@@ -1,6 +1,7 @@
 import { fetchTmdbList } from "@media-track/workflow";
 import { getTmdbAccesses, getAccountScopedSettings, getCurrentAccountId } from "./workflow-runtime";
-import { anilistClient, type AnimeFeed } from "./anilist/client";
+import type { AnimeFeed } from "./anilist/client";
+import { getAniListClient } from "./anilist/server-client";
 
 export type TrendingKind = "movie" | "tv" | "anime";
 
@@ -108,7 +109,7 @@ export function mapTrendingResults(raw: unknown, kind: TrendingKind): TrendingCa
 export async function getTrending(kind: TrendingKind, animeFeed: AnimeFeed = "trending"): Promise<DiscoveryCard[]> {
   if (kind === "anime") {
     try {
-      const media = await anilistClient.trending(animeFeed);
+      const media = await (await getAniListClient()).trending(animeFeed);
       if (media.length) return media.map((item) => ({
         source: "anilist" as const, anilistId: item.anilistId, title: item.title,
         year: item.year, posterUrl: item.posterUrl, mediaType: item.mediaType === "movie" ? "movie" : "tv",

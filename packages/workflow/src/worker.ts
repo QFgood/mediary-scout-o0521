@@ -148,6 +148,7 @@ export async function resolveWorkerDeps(
 export type SeasonMetadataSync = (input: {
   tmdbId: number | null;
   anilistId?: number;
+  accountId?: string;
   seasonNumber: number;
 }) => Promise<{ latestAiredEpisode: number; totalEpisodes: number } | null>;
 
@@ -749,7 +750,7 @@ async function patrolTrackedState(args: {
       try {
         const meta = await input.syncSeasonMetadata({
           tmdbId: state.title.tmdbId,
-          ...(state.title.anilistId !== undefined ? { anilistId: state.title.anilistId } : {}),
+          ...(state.title.anilistId !== undefined ? { anilistId: state.title.anilistId, accountId: state.accountId } : {}),
           seasonNumber: state.season.seasonNumber,
         });
         if (meta) {

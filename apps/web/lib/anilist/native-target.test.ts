@@ -145,7 +145,7 @@ describe("native AniList queue, original agent tools, storage and restart", () =
       const sync = vi.fn(async () => ({ latestAiredEpisode: 3, totalEpisodes: 25 }));
       await runScheduledType3Monitoring({ repository, resourceProvider: new FakeResourceProvider({ keywordResults: {} }), storage,
         model: createStubAcquisitionModel(), storageParentDirectoryId: "tv-root", animeStorageParentDirectoryId: "anime-root", syncSeasonMetadata: sync });
-      expect(sync).toHaveBeenCalledWith({ tmdbId: null, anilistId: 999, seasonNumber: 1 });
+      expect(sync).toHaveBeenCalledWith({ tmdbId: null, anilistId: 999, seasonNumber: 1, accountId: "acct_default" });
       const refreshed = await repository.getTrackedSeasonState(native.season.id, scope);
       expect(refreshed?.season.latestAiredEpisode).toBe(3);
       expect(refreshed?.episodes.filter((episode) => episode.obtained)).toHaveLength(2);

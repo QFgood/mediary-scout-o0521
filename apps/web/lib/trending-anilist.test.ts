@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 vi.mock("./workflow-runtime", () => ({
-  getTmdbAccesses: vi.fn(async () => []), getAccountScopedSettings: vi.fn(() => ({})), getCurrentAccountId: vi.fn(async () => "account"),
+  getTmdbAccesses: vi.fn(async () => []), getAccountScopedSettings: vi.fn(() => ({ getSetting: async () => null })), getCurrentAccountId: vi.fn(async () => "account"),
 }));
 vi.mock("@media-track/workflow", () => ({ fetchTmdbList: vi.fn() }));
 

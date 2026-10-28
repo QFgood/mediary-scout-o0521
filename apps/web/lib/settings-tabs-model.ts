@@ -7,7 +7,6 @@ export const SETTINGS_TABS = [
   { id: "patrol", label: "巡检与通知" },
   { id: "update", label: "更新" },
   { id: "account", label: "账号" },
-  { id: "remote", label: "远程访问" },
 ] as const;
 
 export type SettingsTabId = (typeof SETTINGS_TABS)[number]["id"];
@@ -24,9 +23,9 @@ const TAB_IDS = new Set<string>(SETTINGS_TABS.map((tab) => tab.id));
  *
  * Members render `null` for the same class of reason (not the站主 /
  * feature off / 演示站), so they share one mechanism — but their visibility is
- * INDEPENDENT: 多用户关时 account 隐藏而 remote 仍可显示；演示站只藏 update。
+ * INDEPENDENT: account 与 update 分别观察各自内容。
  */
-export const OBSERVED_SETTINGS_TABS = ["account", "remote", "update"] as const;
+export const OBSERVED_SETTINGS_TABS = ["account", "update"] as const;
 
 export type ObservedSettingsTabId = (typeof OBSERVED_SETTINGS_TABS)[number];
 
@@ -38,7 +37,7 @@ const ACCOUNT_HASHES = new Set(["#password", "#accounts"]);
 
 /**
  * @param visible 受观察 tab 的可见性。为兼容旧调用点，传布尔时只表示
- *   「账号 tab 可见」——它绝不顺带放开 remote，否则任一受观察 tab 的深链
+ *   「账号 tab 可见」——它绝不顺带放开 update，否则任一受观察 tab 的深链
  *   就能借另一个 tab 的可见性绕过 fail-closed。
  */
 export function resolveSettingsTab(
