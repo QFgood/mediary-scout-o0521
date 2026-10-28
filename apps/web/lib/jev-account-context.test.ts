@@ -44,6 +44,17 @@ afterEach(() => {
 });
 
 describe("per-account worker context carries jevJudge when Settings enable it", () => {
+  it("assembles a proxied assrt provider only for the account selecting assrt", async () => {
+    const rt = await boot();
+    const repository = rt.getWorkflowRepository();
+    await repository.setAccountSetting(ACCOUNT_ID, "assrt_token", "dummy");
+    await repository.setAccountSetting(ACCOUNT_ID, "service_socks5_proxy", JSON.stringify({ url: "socks5://proxy.test:1080", services: ["assrt"] }));
+    const resolve = rt.buildAccountContextResolver();
+    expect((await resolve(ACCOUNT_ID, null)).assrtProvider).toBeDefined();
+    await repository.setAccountSetting(ACCOUNT_ID, "service_socks5_proxy", JSON.stringify({ url: "socks5://proxy.test:1080", services: ["jev"] }));
+    expect((await resolve(ACCOUNT_ID, null)).assrtProvider).toBeUndefined();
+  });
+
   it("resolver returns jevJudge only when key+enabled+health ok", async () => {
     const rt = await boot();
     const repository = rt.getWorkflowRepository();

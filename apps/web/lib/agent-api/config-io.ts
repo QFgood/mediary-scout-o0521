@@ -206,7 +206,8 @@ export async function writeAgentConfig(
       }
       // 与设置页同一条规矩:存之前真打一次,打不通/不是 PanSou 就不存。
       // agent 走这条路径改配置时同样不能把一个坏地址写进去。
-      const probe = await probePanSou(trimmed);
+      const { getServiceProxyFetch } = await import("../service-proxy");
+      const probe = await probePanSou(trimmed, { fetchImpl: await getServiceProxyFetch(getAccountScopedSettings(accountId), "pansou") ?? ((input, init) => globalThis.fetch(input, init)) });
       if (!probe.ok) {
         return { ok: false, field: "pansouBaseUrl", message: probe.message };
       }

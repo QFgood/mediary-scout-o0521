@@ -1,3 +1,4 @@
+import type { AssrtProviderPort } from "./subtitle-provider.js";
 import type { LanguageModel } from "ai";
 import { runKeyedPool } from "./keyed-pool.js";
 import type {
@@ -106,6 +107,7 @@ export async function resolveWorkerDeps(
   qualityPreference: "high" | "medium" | undefined;
   storageProvider: string | undefined;
   assrtToken: string | undefined;
+  assrtProvider: AssrtProviderPort | undefined;
   jevJudge: JevJudge | undefined;
   agentMemory: boolean | undefined;
   storageParentDirectoryId: string | undefined;
@@ -126,6 +128,7 @@ export async function resolveWorkerDeps(
     qualityPreference: ctx.qualityPreference ?? base.qualityPreference,
     storageProvider: ctx.storageProvider ?? base.storageProvider,
     assrtToken: ctx.assrtToken ?? base.assrtToken,
+    assrtProvider: resolve ? ctx.assrtProvider : base.assrtProvider,
     // Jev is per-account opt-in: with a resolver, its answer is authoritative even
     // when it has no judge — an account that never configured (or switched off) the
     // prefilter must not inherit a judge that happens to ride in the base deps.
@@ -181,6 +184,7 @@ export interface AccountWorkerContext {
   storageProvider?: string;
   /** assrt token (Settings → 字幕来源). Undefined = 字幕流程不触发。 */
   assrtToken?: string;
+  assrtProvider?: AssrtProviderPort;
   /** Optional Jev candidate prefilter, resolved per account from Settings. */
   jevJudge?: JevJudge;
   /** Agent memory on/off, resolved per account from Settings (absent = on). */
@@ -507,6 +511,7 @@ export async function runQueuedType2Workflow(input: {
       ...(deps.assrtToken === undefined
         ? {}
         : { assrtToken: deps.assrtToken }),
+      ...(deps.assrtProvider === undefined ? {} : { assrtProvider: deps.assrtProvider }),
       ...(deps.jevJudge === undefined
         ? {}
         : { jevJudge: deps.jevJudge }),
@@ -853,6 +858,7 @@ async function patrolTrackedState(args: {
         ...(deps.assrtToken === undefined
           ? {}
           : { assrtToken: deps.assrtToken }),
+        ...(deps.assrtProvider === undefined ? {} : { assrtProvider: deps.assrtProvider }),
         ...(deps.jevJudge === undefined
           ? {}
           : { jevJudge: deps.jevJudge }),
@@ -956,6 +962,7 @@ async function patrolMovie(args: {
     qualityPreference: "high" | "medium" | undefined;
     storageProvider: string | undefined;
     assrtToken: string | undefined;
+    assrtProvider: AssrtProviderPort | undefined;
     jevJudge: JevJudge | undefined;
     agentMemory: boolean | undefined;
     moviesParentDirectoryId: string | undefined;
@@ -1055,6 +1062,7 @@ async function patrolMovie(args: {
       ...(deps.assrtToken === undefined
         ? {}
         : { assrtToken: deps.assrtToken }),
+      ...(deps.assrtProvider === undefined ? {} : { assrtProvider: deps.assrtProvider }),
       ...(deps.jevJudge === undefined
         ? {}
         : { jevJudge: deps.jevJudge }),
@@ -1228,6 +1236,7 @@ export async function runQueuedMovieAcquisition(input: {
       ...(deps.assrtToken === undefined
         ? {}
         : { assrtToken: deps.assrtToken }),
+      ...(deps.assrtProvider === undefined ? {} : { assrtProvider: deps.assrtProvider }),
       ...(deps.jevJudge === undefined
         ? {}
         : { jevJudge: deps.jevJudge }),
@@ -1343,6 +1352,7 @@ export async function runQueuedSeriesInitialization(input: {
       ...(deps.assrtToken === undefined
         ? {}
         : { assrtToken: deps.assrtToken }),
+      ...(deps.assrtProvider === undefined ? {} : { assrtProvider: deps.assrtProvider }),
       ...(deps.jevJudge === undefined
         ? {}
         : { jevJudge: deps.jevJudge }),

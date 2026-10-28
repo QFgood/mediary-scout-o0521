@@ -1,3 +1,4 @@
+import type { AssrtProviderPort } from "./subtitle-provider.js";
 import { DEFAULT_ACCOUNT_ID } from "./domain.js";
 import type { AgentMemoryStore } from "./agent-memory.js";
 import type { LanguageModel } from "ai";
@@ -56,6 +57,7 @@ interface TvV2Common {
   storageProvider?: string;
   /** assrt token (Settings → 字幕来源). Undefined = 字幕流程不触发。 */
   assrtToken?: string;
+  assrtProvider?: AssrtProviderPort;
   /** Optional Jev candidate prefilter (Settings); resolved per account by the worker. */
   jevJudge?: JevJudge;
   /** Agent memory on/off (Settings → AI 模型, default on). When on, the repository
@@ -84,6 +86,7 @@ function passthrough(input: TvV2Common): {
   qualityPreference?: "high" | "medium";
   storageProvider?: string;
   assrtToken?: string;
+  assrtProvider?: AssrtProviderPort;
   jevJudge?: JevJudge;
   memory?: { store: AgentMemoryStore; accountId: string; drive?: string };
 } {
@@ -95,6 +98,7 @@ function passthrough(input: TvV2Common): {
     ...(input.qualityPreference === undefined ? {} : { qualityPreference: input.qualityPreference }),
     ...(input.storageProvider === undefined ? {} : { storageProvider: input.storageProvider }),
     ...(input.assrtToken === undefined ? {} : { assrtToken: input.assrtToken }),
+    ...(input.assrtProvider === undefined ? {} : { assrtProvider: input.assrtProvider }),
     ...(input.jevJudge === undefined ? {} : { jevJudge: input.jevJudge }),
   };
 }
@@ -765,6 +769,7 @@ export async function runMovieAcquisitionV2AndPersist(input: {
   storageProvider?: string;
   /** assrt token (Settings → 字幕来源). Undefined = 字幕流程不触发。 */
   assrtToken?: string;
+  assrtProvider?: AssrtProviderPort;
   /** Optional Jev candidate prefilter (Settings); resolved per account by the worker. */
   jevJudge?: JevJudge;
   /** See TvV2Common.agentMemory. */
@@ -803,6 +808,7 @@ export async function runMovieAcquisitionV2AndPersist(input: {
     ...(input.qualityPreference === undefined ? {} : { qualityPreference: input.qualityPreference }),
     ...(input.storageProvider === undefined ? {} : { storageProvider: input.storageProvider }),
     ...(input.assrtToken === undefined ? {} : { assrtToken: input.assrtToken }),
+    ...(input.assrtProvider === undefined ? {} : { assrtProvider: input.assrtProvider }),
     ...(input.jevJudge === undefined ? {} : { jevJudge: input.jevJudge }),
     ...(input.userRequest === undefined ? {} : { userRequest: input.userRequest }),
     ...(input.priorObtained === undefined ? {} : { priorObtained: input.priorObtained }),

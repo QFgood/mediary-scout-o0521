@@ -39,6 +39,7 @@ export interface AssrtProviderPort {
 
 export interface AssrtSubtitleProviderOptions {
   token: string;
+  fetchImpl?: typeof fetch;
   fetchJson?: AssrtFetchJson;
 }
 
@@ -55,7 +56,7 @@ export class AssrtSubtitleProvider {
 
   constructor(options: AssrtSubtitleProviderOptions) {
     this.token = options.token;
-    this.fetchJson = options.fetchJson ?? defaultAssrtFetchJson;
+    this.fetchJson = options.fetchJson ?? ((url) => defaultAssrtFetchJson(url, options.fetchImpl));
   }
 
   /** Search assrt for a keyword. Returns [] on ANY miss/error (never throws). */
@@ -134,8 +135,8 @@ export class AssrtSubtitleProvider {
   }
 }
 
-async function defaultAssrtFetchJson(url: string): Promise<unknown> {
-  const response = await fetch(url, { method: "GET", signal: AbortSignal.timeout(ASSRT_FETCH_TIMEOUT_MS) });
+async function defaultAssrtFetchJson(url: string, fetchImpl: typeof fetch = fetch): Promise<unknown> {
+  const response = await fetchImpl(url, { method: "GET", signal: AbortSignal.timeout(ASSRT_FETCH_TIMEOUT_MS) });
   if (!response.ok) {
     throw new Error(`assrt request failed with HTTP ${response.status}`);
   }

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { MockLanguageModelV3 } from "ai/test";
 import {
   FakeResourceProvider,
@@ -46,6 +46,22 @@ function throwingModel() {
 }
 
 describe("runQueuedType2Workflow (V2 engine)", () => {
+  it("carries the claimed account's assrt transport through the TV workflow to the subtitle search", async () => {
+    const repository = new InMemoryWorkflowRepository();
+    const { title, season } = trackedFixture();
+    title.originCountries = ["US"];
+    await queueTrackingInitialization({ title, season, keyword: "Show", repository, accountId: "acct_bob", createWorkflowRunId: () => "run_proxy_subtitles", now: fixedNow });
+    const storage = Object.assign(new FakeStorageExecutor(), { transferSubtitleUrl: async () => { throw new Error("no subtitle should be transferred"); } });
+    const search = vi.fn(async () => []);
+    const assrtProvider = { search, detail: vi.fn(async () => []) };
+    await runQueuedType2Workflow({
+      repository, resourceProvider: emptyProvider(), storage, model: noCoverageModel(), storageParentDirectoryId: "root",
+      resolveAccountContext: async () => ({ assrtToken: "dummy", assrtProvider }),
+    });
+    expect(search).toHaveBeenCalled();
+    expect(assrtProvider.detail).not.toHaveBeenCalled();
+  });
+
   it("resolves the CLAIMED run's account context (per-account 115 creds) — §7 form B", async () => {
     const repository = new InMemoryWorkflowRepository();
     const { title, season } = trackedFixture();

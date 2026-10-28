@@ -18,6 +18,8 @@ import { DEFAULT_ANILIST_API_URL, resolveAniListApiUrl } from "../../lib/anilist
 import { AssrtTokenForm } from "../../components/assrt-token-form";
 import { ProwlarrConfigForm } from "../../components/prowlarr-config-form";
 import { JevPrefilterForm } from "../../components/jev-prefilter-form";
+import { ServiceProxyForm } from "../../components/service-proxy-form";
+import { getServiceProxyConfig } from "../../lib/service-proxy-config";
 import { ServiceBlock } from "../../components/service-block";
 import { AgentMemoryNotes, AgentMemoryStats } from "../../components/agent-memory-panel";
 import {
@@ -125,6 +127,9 @@ export default function SettingsPage({
               }
               services={
                 <>
+                  <Suspense fallback={<div className="skeleton skeleton-heading" />}>
+                    <ServiceProxySection />
+                  </Suspense>
                   <Suspense fallback={<div className="skeleton skeleton-heading" />}>
                     <LlmConfigSection />
                   </Suspense>
@@ -272,6 +277,21 @@ async function PreferredLanguageSection() {
       <PreferredLanguageForm initial={initial} />
     </section>
   );
+}
+
+async function ServiceProxySection() {
+  await connection();
+  let invalid = false;
+  const config = await getServiceProxyConfig(getAccountScopedSettings(await getCurrentAccountId())).catch(() => {
+    invalid = true;
+    return { url: "", services: [] };
+  });
+  return <section className="panel" style={{ maxWidth: 720, marginTop: 24 }}>
+    <h2 className="panel-title">SOCKS5 服务代理</h2>
+    <p className="panel-note">可选配置，仅用于 AniList、TMDB、PanSou、assrt.net 和 Jev；按服务选择。</p>
+    {invalid ? <p className="panel-note">已存的代理配置无效，请先清除后重新配置。</p> : null}
+    <ServiceProxyForm configured={invalid || Boolean(config.url)} services={config.services} />
+  </section>;
 }
 
 async function QualityPreferenceSection() {
