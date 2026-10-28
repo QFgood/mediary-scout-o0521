@@ -51,6 +51,8 @@ export async function probeServiceProxy(url: string, targets: ProxyProbeTarget[]
         return body?.data && !body.errors ? result(true, "SOCKS5、HTTPS 和 AniList GraphQL 请求均成功。") : result(false, "已收到响应，但不是成功的 AniList GraphQL 数据，请检查接口地址或出口限制。");
       }
       await response.body?.cancel();
+      if (target.service === "assrt" && response.status === 400) return result(true, "代理网络可达，assrt 返回 HTTP 400；探测未携带字幕令牌或搜索参数，不能据此判断字幕服务是否可用。");
+      if (target.service === "jev" && response.status === 404) return result(true, "代理网络可达，Jev 的 GET 探测返回 HTTP 404；未执行推理，接口地址和密钥仍需在 Jev「保存并测试」中验证。");
       if (response.status === 401 || response.status === 405) return result(true, `代理网络可达，HTTP ${response.status}；本测试不发送服务密钥，不验证服务账号。`);
       if (response.status === 403) return result(false, "代理隧道已连通，但目标返回 HTTP 403，可能拒绝当前出口或要求认证。请检查出口线路及服务权限。");
       if (response.status === 429) return result(false, "代理隧道已连通，但目标返回 HTTP 429（请求限流），请稍后重试或更换出口。");

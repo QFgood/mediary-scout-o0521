@@ -2,6 +2,20 @@ import { describe, expect, it, vi } from "vitest";
 import { probeServiceProxy, proxyFailureMessage } from "./service-proxy-probe";
 
 describe("proxy diagnostics", () => {
+  it.each([
+    ["assrt", 400, "字幕令牌"],
+    ["jev", 404, "保存并测试"],
+  ] as const)("separates %s HTTP %i reachability from functional validation", async (service, status, message) => {
+    const results = await probeServiceProxy("socks5://proxy.test:1080", [{ service, url: "https://fixture.test" }], async () => new Response(null, { status }));
+    expect(results[0]).toMatchObject({ ok: true, message: expect.stringContaining(message) });
+    expect(results[0]?.message).toContain(`HTTP ${status}`);
+  });
+  it("does not treat AniList 404 or a connection reset as successful connectivity", async () => {
+    const missing = await probeServiceProxy("socks5://proxy.test:1080", [{ service: "anilist", url: "https://fixture.test" }], async () => new Response(null, { status: 404 }));
+    const reset = await probeServiceProxy("socks5://proxy.test:1080", [{ service: "tmdb", url: "https://fixture.test" }], async () => { throw Object.assign(new Error("reset"), { code: "ECONNRESET" }); });
+    expect(missing[0]?.ok).toBe(false);
+    expect(reset[0]).toMatchObject({ ok: false, message: expect.stringContaining("ECONNRESET") });
+  });
   it("makes an uncached AniList request through the supplied transport and accepts GraphQL data", async () => {
     const fetchImpl = vi.fn<typeof fetch>(async () => Response.json({ data: { Page: { media: [] } } }));
     expect((await probeServiceProxy("socks5://proxy.test:1080", [{ service: "anilist", url: "https://graphql.anilist.co" }], fetchImpl))[0]?.ok).toBe(true);
