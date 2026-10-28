@@ -8,7 +8,8 @@
 
 - Fork：`QFgood/mediary-scout-o0521`，起点 `c528c30`，工作区最初干净、没有开放 PR。
 - 上游：`fancydirty/mediary-scout`，检查时 `main` 为 `0e397a6`。Fork 落后 14 个提交、领先 1 个 Docker CI 提交。未发现现成的 AniList 实现或相关 PR；需求 issue #328 仍开放。
-- 开发分支：`feature/anilist-metadata`。保留 Fork 当前基线，避免把无关的上游更新混入功能变更。
+- 开发分支：`feature/anilist-metadata-verified-tasks`。保留 Fork 当前基线，避免把无关的上游更新混入功能变更。
+- 推送前发现远端已有 `feature/anilist-metadata`（`1b72a4c`），包含此前的 AniList 浏览实现及开发规划，获取入口仍全部禁止。本次采用独立分支向 `main` 提供带整季任务适配的实现，不覆盖该远端分支；两版不能直接相互叠加，审阅时应选择实现或另行整合其独立详情页等差异。
 - `packages/workflow/src/search-view.ts` 的 `MediaSearchCandidate` 强制要求 `tmdbId`；原搜索卡片、`showHref`、任务解析、资源命名、Worker 和巡检均以 TMDB 为锚点。
 - `apps/web/lib/workflow-runtime.ts` 通过 `tmdb_tv_<id>_s<season>` 进入队列，`prepareTrackingTarget` 获取 TMDB 详情和季度；数据库将作品和季度保存为 JSON。
 - 独立 AniList 搜索模型避免向原 `MediaSearchCandidate` 塞入错误 ID。任务适配使用真实 TMDB 季度锚点，原选择保存在季度的 `metadataOrigin` 中，无数据库迁移。
