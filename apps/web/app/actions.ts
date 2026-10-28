@@ -377,7 +377,8 @@ export async function requestRemainingAction(input: {
 }
 
 export async function untrackTitleAction(input: {
-  tmdbId: number;
+  tmdbId: number | null;
+  anilistId?: number;
   // Tree model: REQUIRED (value may be undefined = primary) so the active
   // workspace is always threaded — untrack must act on the drive being viewed.
   storageId: string | undefined;
@@ -393,9 +394,10 @@ export async function untrackTitleAction(input: {
     input.storageId,
     input.mediaKind,
     input.seasonNumber,
+    input.anilistId,
   );
   revalidatePath("/");
-  revalidatePath(`/show/${input.tmdbId}`);
+  revalidatePath(input.tmdbId === null ? `/anime/anilist/${input.anilistId}` : `/show/${input.tmdbId}`);
   if (result.status === "in_flight") {
     return { status: "in_flight", message: "获取进行中，完成或在活动页取消后再取消追踪。" };
   }

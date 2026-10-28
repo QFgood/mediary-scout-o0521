@@ -317,12 +317,16 @@ export async function runAcquisitionV2(request: RunAcquisitionV2Request): Promis
   // The title key is computed HERE from the target — the agent never supplies it.
   const memoryNow = request.memory?.now ?? (() => new Date().toISOString());
   const memoryDrive = request.memory?.drive ?? request.storageProvider;
+  const targetMemoryKey = request.target.kind === "tv" && request.target.anilistId
+    ? `anilist_anime_${request.target.anilistId}`
+    : typeof request.target.tmdbId === "number" && request.target.tmdbId > 0
+      ? memoryTitleKey({ kind: request.target.kind, tmdbId: request.target.tmdbId }) : null;
   const memoryBinding =
-    request.memory && typeof request.target.tmdbId === "number" && request.target.tmdbId > 0
+    request.memory && targetMemoryKey
       ? {
           store: request.memory.store,
           accountId: request.memory.accountId,
-          titleKey: memoryTitleKey({ kind: request.target.kind, tmdbId: request.target.tmdbId }),
+          titleKey: targetMemoryKey,
           runId: request.workflowRunId,
           ...(memoryDrive ? { provider: memoryDrive } : {}),
           ...(memoryDrive && request.storageProvider && request.storageProvider !== memoryDrive

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { TriangleAlert } from "lucide-react";
-import { showHref } from "@media-track/workflow";
+import { mediaHref } from "@media-track/workflow/scope";
 import { getAniListSearchView } from "../lib/anilist/search";
 import type { AniListMetadata } from "../lib/anilist/mapper";
-import { getAniListTaskCompatibility } from "../lib/anilist/task";
+import { getAniListAcquisitionTarget } from "../lib/anilist/task";
 import { metadataSearchHref } from "../lib/metadata/types";
 import { getActiveWorkspaceScope, getWorkflowRepository } from "../lib/workflow-runtime";
 import { isDemoMode } from "../lib/demo-mode";
@@ -44,29 +44,31 @@ const SEASONS: Record<string, string> = { WINTER: "冬季", SPRING: "春季", SU
 const STATUSES: Record<string, string> = { FINISHED: "已完结", RELEASING: "播出中", NOT_YET_RELEASED: "尚未播出", CANCELLED: "已取消", HIATUS: "暂停播出" };
 
 export async function AniListCandidateCard({ media, storageId }: { media: AniListMetadata; storageId?: string | undefined }) {
-  const compatibility = await getAniListTaskCompatibility(media);
+  const compatibility = await getAniListAcquisitionTarget(media);
   const scope = compatibility.supported ? await getActiveWorkspaceScope(storageId) : undefined;
   const state = compatibility.supported ? await getWorkflowRepository().getTrackedSeasonState(compatibility.target.season.id, scope) : null;
   const active = compatibility.supported ? await getWorkflowRepository().findActiveWorkflowRun({
     trackedSeasonId: compatibility.target.season.id, kind: "type2_init", ...scope,
   }) : null;
   const externalHref = `https://anilist.co/anime/${media.anilistId}`;
+  const detailHref = compatibility.supported ? mediaHref(compatibility.target.title, "search", storageId) : externalHref;
+  const address = compatibility.supported ? compatibility.target.title : null;
   return (
     <article className="candidate-card">
-      <a className="candidate-poster" href={externalHref} target="_blank" rel="noreferrer" aria-label={`${media.title} 的 AniList 详情`}>
+      <Link className="candidate-poster" href={detailHref} aria-label={`${media.title} 的详情`}>
         {media.posterUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={media.posterUrl} alt="" loading="lazy" />
         ) : <span>{media.title.slice(0, 4)}</span>}
-      </a>
+      </Link>
       <div className="candidate-body">
         <div className="candidate-title-row">
-          <div><h3><a href={externalHref} target="_blank" rel="noreferrer">{media.title}</a></h3>
+          <div><h3><Link href={detailHref}>{media.title}</Link></h3>
             <p>{media.year ?? "年份未知"} · {media.format ?? "动漫"} · AniList</p></div>
           <div className="candidate-actions">
-            {compatibility.supported && active ? <><AcquiringPoller /><AcquireProgressBadge tmdbId={compatibility.mapping.tmdbId} seasonNumber={compatibility.mapping.seasonNumber} storageId={storageId} /></>
-              : compatibility.supported && state ? <Link className="primary-button" href={showHref(compatibility.mapping.tmdbId, "search", storageId, "tv")}>查看获取状态</Link>
-              : compatibility.supported && !isDemoMode() ? <RequestTrackButton candidateId={`anilist_anime_${media.anilistId}`} tmdbId={compatibility.mapping.tmdbId} storageId={storageId} />
+            {compatibility.supported && active ? <><AcquiringPoller /><AcquireProgressBadge tmdbId={address!.tmdbId} anilistId={address!.anilistId} seasonNumber={compatibility.target.season.seasonNumber} storageId={storageId} /></>
+              : compatibility.supported && state ? <Link className="primary-button" href={detailHref}>查看获取状态</Link>
+              : compatibility.supported && !isDemoMode() ? <RequestTrackButton candidateId={`anilist_anime_${media.anilistId}`} {...(address!.tmdbId === null ? { anilistId: address!.anilistId } : { tmdbId: address!.tmdbId })} storageId={storageId} />
               : <button className="primary-button" disabled title={compatibility.supported ? "演示站为只读" : compatibility.reason}>获取</button>}
           </div>
         </div>
@@ -77,7 +79,9 @@ export async function AniListCandidateCard({ media, storageId }: { media: AniLis
           {media.status ? <span>{STATUSES[media.status] ?? media.status}</span> : null}
         </div>
         {media.aliases.length ? <p className="panel-note">别名：{media.aliases.join(" / ")}</p> : null}
-        <p className="panel-note">{compatibility.supported ? `已核验：对应 TMDB 第 ${compatibility.mapping.seasonNumber} 季（${compatibility.mapping.episodeCount} 集）` : compatibility.reason}</p>
+        <p className="panel-note">{compatibility.supported ? compatibility.mode === "native"
+          ? "按此 AniList 条目的集数范围获取，后续播出自动追踪。"
+          : `已核验：对应 TMDB 第 ${compatibility.target.season.seasonNumber} 季（${compatibility.target.season.totalEpisodes} 集）` : compatibility.reason}</p>
       </div>
     </article>
   );

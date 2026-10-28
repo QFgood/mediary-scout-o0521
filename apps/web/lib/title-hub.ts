@@ -33,6 +33,7 @@ import {
   queueCandidateTracking,
   type CandidateTrackingRequestResult,
 } from "./workflow-runtime";
+import { mediaKey } from "@media-track/workflow/scope";
 
 export interface TitleHubSeason {
   seasonNumber: number;
@@ -354,6 +355,7 @@ function movieHubViewFromTitle(
   acquiring: boolean,
   obtained: boolean,
 ): MovieHubView {
+  if (title.tmdbId === null) throw new Error("Native AniList movie targets are not supported");
   return {
     kind: "movie",
     tmdbId: title.tmdbId,
@@ -427,7 +429,8 @@ export async function queueRemainingSeasons(
 }
 
 export interface LibraryWallEntry {
-  tmdbId: number;
+  tmdbId: number | null;
+  anilistId?: number;
   title: string;
   year: number;
   type: "movie" | "tv" | "anime";
@@ -458,18 +461,20 @@ export async function getLibraryWall(storageId?: string): Promise<LibraryWallEnt
   await ensureDemoSeeded(repository);
   const now = new Date().toISOString();
   const states = await repository.listTrackedSeasonStates(scope);
-  const byTitle = new Map<number, typeof states>();
+  const byTitle = new Map<string, typeof states>();
   for (const state of states) {
-    const list = byTitle.get(state.title.tmdbId) ?? [];
+    const key = mediaKey(state.title);
+    const list = byTitle.get(key) ?? [];
     list.push(state);
-    byTitle.set(state.title.tmdbId, list);
+    byTitle.set(key, list);
   }
 
   const entries: LibraryWallEntry[] = [];
-  for (const [tmdbId, titleStates] of byTitle) {
+  for (const titleStates of byTitle.values()) {
     const title = titleStates[0]!.title;
+    const tmdbId = title.tmdbId;
     let posterPath = title.posterPath ?? null;
-    if (posterPath === null) {
+    if (posterPath === null && tmdbId !== null) {
       // Titles tracked before artwork persistence landed: enrich lazily
       // (cached 6h); future runs persist the poster with the title itself.
       // Movies and series resolve through different TMDB endpoints — routing a
@@ -496,6 +501,7 @@ export async function getLibraryWall(storageId?: string): Promise<LibraryWallEnt
     const unreleased = title.type === "movie" && isMovieUnreleased(title.releaseDate, now);
     entries.push({
       tmdbId,
+      ...(title.anilistId === undefined ? {} : { anilistId: title.anilistId }),
       title: title.title,
       year: title.year,
       type: title.type,
@@ -513,7 +519,8 @@ export async function getLibraryWall(storageId?: string): Promise<LibraryWallEnt
 }
 
 export interface InProgressTitle {
-  tmdbId: number;
+  tmdbId: number | null;
+  anilistId?: number;
   title: string;
   year: number;
   type: "movie" | "tv" | "anime";
@@ -534,21 +541,22 @@ export async function getInProgressTitles(storageId?: string): Promise<InProgres
   const active = (await repository.listActiveWorkflowRuns(scope)).filter(
     (snapshot) => snapshot.workflowRun.kind !== "replace_request" && isUserVisibleWorkflowKind(snapshot.workflowRun.kind),
   );
-  const byTmdb = new Map<number, InProgressTitle>();
+  const byTmdb = new Map<string, InProgressTitle>();
   for (const snapshot of active) {
     const title = snapshot.title;
-    if (byTmdb.has(title.tmdbId)) {
+    if (byTmdb.has(mediaKey(title))) {
       continue;
     }
     let posterPath = title.posterPath ?? null;
-    if (posterPath === null) {
+    if (posterPath === null && title.tmdbId !== null) {
       posterPath =
         title.type === "movie"
           ? (await movieTargetFromTmdbId(title.tmdbId))?.title.posterPath ?? null
           : (await seriesTargetFor(title.tmdbId))?.title.posterPath ?? null;
     }
-    byTmdb.set(title.tmdbId, {
+    byTmdb.set(mediaKey(title), {
       tmdbId: title.tmdbId,
+      ...(title.anilistId === undefined ? {} : { anilistId: title.anilistId }),
       title: title.title,
       year: title.year,
       type: title.type,

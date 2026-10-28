@@ -6,7 +6,7 @@ import { useRef, useState, type JSX, type KeyboardEvent } from "react";
 import { CalendarClock, CheckCircle2, Clock3, LoaderCircle, Search, TriangleAlert, X } from "lucide-react";
 // Client components must take the /scope subpath, not the barrel — the barrel
 // drags pg/postgres into the client bundle (see request-state.tsx).
-import { showHref } from "@media-track/workflow/scope";
+import { mediaHref, mediaKey, mediaPosterUrl } from "@media-track/workflow/scope";
 import type { InProgressTitle, LibraryWallEntry } from "../lib/title-hub";
 
 /** Mirror of page.tsx's workspaceBasePath: "/" is the account's primary drive,
@@ -76,7 +76,7 @@ export function LibraryQuickFind({
   const soleMatchHref = (): string | null => {
     if (query.trim() === "" || totalCount !== 1 || matchedWall.length !== 1) return null;
     const sole = matchedWall[0];
-    return sole ? showHref(sole.tmdbId, "library", storageId, sole.type) : null;
+    return sole ? mediaHref(sole, "library", storageId) : null;
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -205,7 +205,7 @@ export function LibraryQuickFind({
           <InProgressRow titles={matchedInProgress} />
           <div className="poster-wall">
             {matchedWall.map((entry) => (
-              <PosterCard entry={entry} activeStorageId={storageId} key={entry.tmdbId} />
+              <PosterCard entry={entry} activeStorageId={storageId} key={mediaKey(entry)} />
             ))}
           </div>
         </>
@@ -241,10 +241,10 @@ function CategoryRow({
       </Link>
       <div className="poster-row">
         {inProgressTitles.map((title) => (
-          <InProgressCard title={title} key={`ip_${title.tmdbId}`} />
+          <InProgressCard title={title} key={`ip_${mediaKey(title)}`} />
         ))}
         {wallEntries.map((entry) => (
-          <PosterCard entry={entry} activeStorageId={storageId} key={entry.tmdbId} />
+          <PosterCard entry={entry} activeStorageId={storageId} key={mediaKey(entry)} />
         ))}
       </div>
     </div>
@@ -262,7 +262,7 @@ function InProgressRow({ titles }: { titles: InProgressTitle[] }) {
       </div>
       <div className="poster-row">
         {titles.map((title) => (
-          <InProgressCard title={title} key={title.tmdbId} />
+          <InProgressCard title={title} key={mediaKey(title)} />
         ))}
       </div>
     </div>
@@ -275,7 +275,7 @@ function InProgressCard({ title }: { title: InProgressTitle }) {
       <span className="wall-poster">
         {title.posterPath ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={`https://image.tmdb.org/t/p/w342${title.posterPath}`} alt="" loading="lazy" />
+          <img src={mediaPosterUrl(title.posterPath)!} alt="" loading="lazy" />
         ) : (
           <span className="poster-fallback">{title.title.slice(0, 4)}</span>
         )}
@@ -309,11 +309,11 @@ function PosterCard({ entry, activeStorageId }: { entry: LibraryWallEntry; activ
             ];
 
   return (
-    <Link className="wall-card" href={showHref(entry.tmdbId, "library", activeStorageId, entry.type)}>
+    <Link className="wall-card" href={mediaHref(entry, "library", activeStorageId)}>
       <span className="wall-poster">
         {entry.posterPath ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={`https://image.tmdb.org/t/p/w342${entry.posterPath}`} alt="" loading="lazy" />
+          <img src={mediaPosterUrl(entry.posterPath)!} alt="" loading="lazy" />
         ) : (
           <span className="poster-fallback">{entry.title.slice(0, 4)}</span>
         )}
@@ -338,7 +338,7 @@ function PosterCard({ entry, activeStorageId }: { entry: LibraryWallEntry; activ
             ? entry.state === "reserved"
               ? `预定 · ${formatReleaseDate(entry.releaseDate)}上映`
               : entry.year
-            : `${entry.year} · ${entry.seasonCount} 季 · ${entry.obtainedEpisodes}/${entry.totalAiredEpisodes}/${entry.totalEpisodes} 集`}
+            : `${entry.year} · ${entry.anilistId && entry.tmdbId === null ? "AniList" : `${entry.seasonCount} 季`} · ${entry.obtainedEpisodes}/${entry.totalAiredEpisodes}/${entry.totalEpisodes} 集`}
         </span>
       </span>
     </Link>

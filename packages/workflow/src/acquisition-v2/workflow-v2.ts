@@ -42,7 +42,7 @@ export interface RunAcquisitionV2WorkflowRequest {
   executor: StorageExecutor;
   model: LanguageModel;
   workflowRunId: string;
-  title: { name: string; year: number; aliases: string[]; tmdbId: number };
+  title: { name: string; year: number; aliases: string[]; tmdbId: number | null; anilistId?: number };
   /** Library category parent (Movies/TV/Anime), chosen by title.type upstream. */
   categoryParentId: string;
   seasons: V2WorkflowSeason[];
@@ -124,6 +124,7 @@ export async function runAcquisitionV2Workflow(
         showName: request.title.name,
         year: request.title.year,
         tmdbId: request.title.tmdbId,
+        ...(request.title.anilistId === undefined ? {} : { anilistId: request.title.anilistId }),
         seasons: request.seasons.map((season) => season.seasonNumber),
         workflowRunId: request.workflowRunId,
       });
@@ -203,6 +204,7 @@ export async function runAcquisitionV2Workflow(
       missingEpisodes: before.missing,
       qualityPreference: request.qualityPreference,
       ...(request.title.tmdbId ? { tmdbId: request.title.tmdbId } : {}),
+      ...(request.title.anilistId === undefined ? {} : { anilistId: request.title.anilistId }),
     },
     stagingDirectoryId: directories.stagingDirectoryId,
     targetSeasonDirectoryIds: directories.seasonDirectoryIds,

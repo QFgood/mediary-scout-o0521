@@ -6,11 +6,12 @@ import type { ActivityActiveRun } from "./activity-view";
  *  request, so another season's run isn't shown). */
 export function findActiveRun(
   active: ActivityActiveRun[],
-  tmdbId: number,
+  tmdbId: number | null,
   seasonNumber: number | null,
+  anilistId?: number | undefined,
 ): ActivityActiveRun | null {
   const matches = active.filter(
-    (r) => r.tmdbId === tmdbId && (seasonNumber == null || r.seasonNumber === seasonNumber),
+    (r) => (tmdbId === null ? anilistId != null && r.tmdbId === null && r.anilistId === anilistId : r.tmdbId === tmdbId) && (seasonNumber == null || r.seasonNumber === seasonNumber),
   );
   return matches.find((r) => r.status === "running") ?? matches[0] ?? null;
 }

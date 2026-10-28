@@ -1,6 +1,26 @@
 import { createTmdbMetadataProvider, prepareTrackingTarget } from "@media-track/workflow";
 import { adaptAniListTask, parseVerifiedMappings, type AniListTaskCompatibility } from "../metadata/task-adapter";
 import type { AniListMetadata } from "./mapper";
+import { prepareNativeAniListTarget } from "./native-target";
+
+export type AniListAcquisitionTarget =
+  | { supported: true; target: import("@media-track/workflow").PreparedTrackingTarget; mode: "native" | "mapped" }
+  | { supported: false; reason: string };
+
+/** Keep an explicitly configured mapping; otherwise acquire the independent AniList entry. */
+export async function getAniListAcquisitionTarget(media: AniListMetadata, accountId?: string): Promise<AniListAcquisitionTarget> {
+  try {
+    const mappings = parseVerifiedMappings(process.env.MEDIA_TRACK_ANILIST_MAPPINGS);
+    if (mappings.some((mapping) => mapping.anilistId === media.anilistId)) {
+      const mapped = await getAniListTaskCompatibility(media, accountId);
+      return mapped.supported ? { supported: true, target: mapped.target, mode: "mapped" } : mapped;
+    }
+    const native = prepareNativeAniListTarget(media);
+    return native.supported ? { ...native, mode: "native" } : native;
+  } catch {
+    return { supported: false, reason: "AniList 映射配置无效，请管理员检查后重试。" };
+  }
+}
 
 /** The dynamic import avoids introducing a workflow-runtime import cycle. */
 export async function getAniListTaskCompatibility(media: AniListMetadata, accountId?: string): Promise<AniListTaskCompatibility> {

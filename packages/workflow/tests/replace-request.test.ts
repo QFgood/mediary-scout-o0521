@@ -1032,7 +1032,7 @@ describe("runQueuedReplaceRequest — scope, metadata and bookkeeping", () => {
     await seedV2Season(storage, title, season, ["S01E01", "S01E02"]);
     await repository.addPendingReplacements({ ...WORK, episodes: ["S01E01"], messageId: "msg_old", now: NOW });
     await queueReplaceRequest({ repository, work: WORK, now: fixedNow, createWorkflowRunId: () => "run_rr_sync" });
-    const synced: Array<{ tmdbId: number; seasonNumber: number }> = [];
+    const synced: Array<{ tmdbId: number | null; anilistId?: number; seasonNumber: number }> = [];
     const seen: { prompt?: string } = {};
 
     await runQueuedReplaceRequest({

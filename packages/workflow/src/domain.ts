@@ -59,7 +59,12 @@ export type Confidence = "low" | "medium" | "high";
 
 export interface MediaTitle {
   id: string;
-  tmdbId: number;
+  /** Null for a native AniList title; never encode an AniList ID as a TMDB ID. */
+  tmdbId: number | null;
+  source?: "tmdb" | "anilist";
+  anilistId?: number;
+  /** Native entries use their own relative episode numbering, not a guessed series season. */
+  episodeNumbering?: "entry_relative";
   type: MediaType;
   title: string;
   originalTitle: string;
@@ -343,7 +348,8 @@ export interface NotificationReport {
   posterPath?: string | null;
   /** For the tap-through link `{webBaseUrl}/show/{tmdbId}` (only when a public
    *  base URL is configured). */
-  tmdbId?: number;
+  tmdbId?: number | null;
+  anilistId?: number;
   mediaType?: MediaType;
   /** Movie release year, shown in the title as "标题 (年份)". */
   year?: number;

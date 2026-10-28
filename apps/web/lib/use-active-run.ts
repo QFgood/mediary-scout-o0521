@@ -10,9 +10,10 @@ import { findActiveRun } from "./inline-progress";
  * the last value on a transient fetch error. 2.6s cadence matches ActivityFeed.
  */
 export function useActiveRun(
-  tmdbId: number,
+  tmdbId: number | null,
   seasonNumber: number | null,
   storageId: string | undefined,
+  anilistId?: number | undefined,
 ): ActivityActiveRun | null {
   const [run, setRun] = useState<ActivityActiveRun | null>(null);
   useEffect(() => {
@@ -27,7 +28,7 @@ export function useActiveRun(
         const res = await fetch(url, { cache: "no-store" });
         if (!res.ok) return;
         const data = (await res.json()) as ActivityView;
-        if (alive) setRun(findActiveRun(data.active, tmdbId, seasonNumber));
+        if (alive) setRun(findActiveRun(data.active, tmdbId, seasonNumber, anilistId));
       } catch {
         // transient — keep last value, retry next tick
       }
@@ -38,6 +39,6 @@ export function useActiveRun(
       alive = false;
       clearInterval(id);
     };
-  }, [tmdbId, seasonNumber, storageId]);
+  }, [tmdbId, seasonNumber, storageId, anilistId]);
   return run;
 }

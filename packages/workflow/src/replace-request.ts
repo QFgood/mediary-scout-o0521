@@ -361,7 +361,7 @@ export async function runQueuedReplaceRequest(
       workflowStatus = result.status;
       finishLockRun = result.finishLockRun;
     } else {
-      const seasons = await syncedSeasons(states, claimed.title.tmdbId, input.syncSeasonMetadata);
+      const seasons = await syncedSeasons(states, claimed.title.tmdbId, input.syncSeasonMetadata, claimed.title.anilistId);
       const result = await runReplaceRequestV2AndPersist({
         ...common,
         title: claimed.title,
@@ -579,18 +579,19 @@ function episodeScope(movie: boolean, states: TrackedSeasonState[]): (episode: s
 /** Every season refreshed against TMDB (best-effort per season, as in the patrol). */
 async function syncedSeasons(
   states: TrackedSeasonState[],
-  tmdbId: number,
+  tmdbId: number | null,
   sync: SeasonMetadataSync | undefined,
+  anilistId?: number,
 ): Promise<Array<{ season: TrackedSeason; episodes: EpisodeState[] }>> {
   const out: Array<{ season: TrackedSeason; episodes: EpisodeState[] }> = [];
   for (const state of states) {
     let entry = { season: state.season, episodes: state.episodes };
     if (sync) {
       try {
-        const meta = await sync({ tmdbId, seasonNumber: state.season.seasonNumber });
+        const meta = await sync({ tmdbId, seasonNumber: state.season.seasonNumber, ...(anilistId === undefined ? {} : { anilistId }) });
         if (meta) {
           const synced = syncSeasonAgainstMetadata({ ...entry, latestAiredEpisode: meta.latestAiredEpisode, totalEpisodes: meta.totalEpisodes });
-          entry = { season: synced.season, episodes: synced.episodes };
+          entry = { season: state.title.source === "anilist" ? { ...synced.season, latestAiredSource: "metadata" } : synced.season, episodes: synced.episodes };
         }
       } catch {
         // Metadata sync is best-effort; fall back to stored counts.
