@@ -42,7 +42,7 @@ const view = (overrides: Partial<UpdateView>): UpdateView => ({
   ...overrides,
 });
 const newer = { tag: "v2026.10.02", date: "2026-10-02", commit: "c".repeat(40), notes: [] };
-const DMG = "https://github.com/fancydirty/mediary-scout/releases/download/v2026.10.02/a.dmg";
+const DMG = "https://github.com/QFgood/mediary-scout-o0521/releases/download/v2026.10.02/a.dmg";
 const render = (props: { view: UpdateView; desktop: boolean; autoUpdate?: { enabled: boolean; time: string } }) =>
   renderToStaticMarkup(createElement(UpdateTab, { autoUpdate: { enabled: false, time: "04:00" }, ...props }));
 
@@ -69,8 +69,8 @@ describe("UpdateTab on desktop", () => {
   });
 
   it("points to the release page when it cannot tell", () => {
-    expect(render({ desktop: true, view: view({ status: "offline" }) })).toContain("releases/latest");
-    expect(render({ desktop: true, view: view({ status: "unknown" }) })).toContain("releases/latest");
+    expect(render({ desktop: true, view: view({ status: "offline" }) })).toContain('href="https://github.com/QFgood/mediary-scout-o0521/releases"');
+    expect(render({ desktop: true, view: view({ status: "unknown" }) })).toContain('href="https://github.com/QFgood/mediary-scout-o0521/releases"');
   });
 
   it("never shows the desktop download on a Docker instance", () => {

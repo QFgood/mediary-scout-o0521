@@ -14,15 +14,26 @@ function fakeFetch(routes: Record<string, { status: number; body: string }>) {
   }) as unknown as typeof fetch;
 }
 
-const TAGS = "https://api.github.com/repos/fancydirty/mediary-scout/git/matching-refs/tags/v";
+const TAGS = "https://api.github.com/repos/QFgood/mediary-scout-o0521/git/matching-refs/tags/v";
 const ref = (tag: string, sha: string, type = "commit") => ({ ref: `refs/tags/${tag}`, object: { sha, type } });
 const notes = (tag: string) =>
-  `https://api.github.com/repos/fancydirty/mediary-scout/contents/release-notes/${tag}.md?ref=${tag}`;
+  `https://api.github.com/repos/QFgood/mediary-scout-o0521/contents/release-notes/${tag}.md?ref=${tag}`;
 const compare = (base: string, head: string) =>
-  `https://api.github.com/repos/fancydirty/mediary-scout/compare/${base}...${head}`;
+  `https://api.github.com/repos/QFgood/mediary-scout-o0521/compare/${base}...${head}`;
 
 describe("fetchReleaseFeed", () => {
   beforeEach(() => invalidateReleaseFeedCache());
+
+  it("keeps an empty fork feed empty rather than falling back to upstream release notes", async () => {
+    const fetchImpl = fakeFetch({
+      [TAGS]: { status: 200, body: "[]" },
+      "https://api.github.com/repos/fancydirty/mediary-scout/git/matching-refs/tags/v": {
+        status: 200, body: JSON.stringify([ref("v2026.10.22", "a".repeat(40))]),
+      },
+    });
+    expect(await fetchReleaseFeed(fetchImpl)).toEqual([]);
+    expect(vi.mocked(fetchImpl).mock.calls.every(([url]) => String(url).startsWith("https://api.github.com/repos/QFgood/mediary-scout-o0521/"))).toBe(true);
+  });
 
   it("keeps only valid release tags, newest first, with their notes", async () => {
     const fetchImpl = fakeFetch({
@@ -161,14 +172,22 @@ describe("fetchCommitRelation", () => {
   });
 });
 
-const LATEST = "https://api.github.com/repos/fancydirty/mediary-scout/releases/latest";
+const LATEST = "https://api.github.com/repos/QFgood/mediary-scout-o0521/releases/latest";
 const asset = (name: string) => ({
   name,
-  browser_download_url: `https://github.com/fancydirty/mediary-scout/releases/download/v2026.10.02/${name}`,
+  browser_download_url: `https://github.com/QFgood/mediary-scout-o0521/releases/download/v2026.10.02/${name}`,
 });
 
 describe("fetchLatestDesktopRelease", () => {
   beforeEach(() => invalidateReleaseFeedCache());
+
+  it("rejects upstream installers even if a fork release response includes them", async () => {
+    const fetchImpl = fakeFetch({ [LATEST]: { status: 200, body: JSON.stringify({ tag_name: "v2026.10.28", assets: [
+      { name: "a.dmg", browser_download_url: "https://github.com/fancydirty/mediary-scout/releases/download/v2026.10.28/a.dmg" },
+      { name: "a.exe", browser_download_url: "https://github.com/fancydirty/mediary-scout/releases/download/v2026.10.28/a.exe" },
+    ] }) } });
+    expect(await fetchLatestDesktopRelease(fetchImpl)).toBeNull();
+  });
 
   it("reads the latest date release and its two installers", async () => {
     const fetchImpl = fakeFetch({
@@ -182,7 +201,7 @@ describe("fetchLatestDesktopRelease", () => {
     });
     expect(await fetchLatestDesktopRelease(fetchImpl)).toEqual({
       tag: "v2026.10.02",
-      pageUrl: "https://github.com/fancydirty/mediary-scout/releases/tag/v2026.10.02",
+      pageUrl: "https://github.com/QFgood/mediary-scout-o0521/releases/tag/v2026.10.02",
       dmgUrl: asset("Mediary.Scout-2026.1002.0-arm64.dmg").browser_download_url,
       exeUrl: asset("Mediary.Scout.Setup.2026.1002.0.exe").browser_download_url,
     });
@@ -259,7 +278,7 @@ describe("fetchLatestDesktopRelease", () => {
       vi.setSystemTime(new Date(start.getTime() + failTtl));
       expect(await fetchLatestDesktopRelease(fetchImpl)).toEqual({
         tag: "v2026.10.02",
-        pageUrl: "https://github.com/fancydirty/mediary-scout/releases/tag/v2026.10.02",
+        pageUrl: "https://github.com/QFgood/mediary-scout-o0521/releases/tag/v2026.10.02",
         dmgUrl: asset("Mediary.Scout-2026.1002.0-arm64.dmg").browser_download_url,
         exeUrl: asset("Mediary.Scout.Setup.2026.1002.0.exe").browser_download_url,
       });

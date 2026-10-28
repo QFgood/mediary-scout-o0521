@@ -4,13 +4,21 @@ import {
   parseLatestRelease,
   shouldCheckForUpdate,
   UPDATE_CHECK_INTERVAL_MS,
+  RELEASES_LATEST_URL,
 } from "../src/update-check.js";
 
-const PAGE = "https://github.com/fancydirty/mediary-scout/releases/tag/v2026.10.02";
-const DOWNLOAD = "https://github.com/fancydirty/mediary-scout/releases/download/v2026.10.02";
+const PAGE = "https://github.com/QFgood/mediary-scout-o0521/releases/tag/v2026.10.02";
+const DOWNLOAD = "https://github.com/QFgood/mediary-scout-o0521/releases/download/v2026.10.02";
 const asset = (name: string, url = `${DOWNLOAD}/${name}`) => ({ name, browser_download_url: url });
 
 describe("parseLatestRelease", () => {
+  it("checks this fork and rejects the original project's installer URLs", () => {
+    expect(RELEASES_LATEST_URL).toBe("https://api.github.com/repos/QFgood/mediary-scout-o0521/releases/latest");
+    expect(parseLatestRelease({ tag_name: "v2026.10.28", assets: [
+      asset("a.dmg", "https://github.com/fancydirty/mediary-scout/releases/download/v2026.10.28/a.dmg"),
+      asset("a.exe", "https://github.com/fancydirty/mediary-scout/releases/download/v2026.10.28/a.exe"),
+    ] })).toBeNull();
+  });
   it("reads a date release that has both installers and links its release page on GitHub", () => {
     expect(
       parseLatestRelease({

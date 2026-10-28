@@ -1,5 +1,7 @@
 # 发布说明
 
+本 Fork 的版本检查、发布说明及安装包来源统一为 [QFgood/mediary-scout-o0521](https://github.com/QFgood/mediary-scout-o0521)。设置页的「更新日志」链接打开本目录，版本号链接打开该仓库对应的 Release。如果尚未发布可识别的日期标签，页面提供[本项目提交记录](https://github.com/QFgood/mediary-scout-o0521/commits/main)入口；主分支提交本身不等同于已发布版本。
+
 每个发布标签 `vYYYY.MM.DD`（同一天第二次发布起 `vYYYY.MM.DD.2`、`.3`…）对应这里一个同名 `.md` 文件，设置页「更新」tab 会显示它。
 
 格式：每条一行，以「新增」「改进」「修复」开头，后面一句用户能看懂的话。不写 PR 号、函数名、内部术语。只对 Docker 或只对桌面版有效的改动，在句子里点明（例如「桌面版……」）。

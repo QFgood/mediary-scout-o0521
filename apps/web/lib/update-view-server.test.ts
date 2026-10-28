@@ -27,9 +27,9 @@ const feed = [
 ];
 const published = {
   tag: "v2026.10.02",
-  pageUrl: "https://github.com/fancydirty/mediary-scout/releases/tag/v2026.10.02",
-  dmgUrl: "https://github.com/fancydirty/mediary-scout/releases/download/v2026.10.02/a.dmg",
-  exeUrl: "https://github.com/fancydirty/mediary-scout/releases/download/v2026.10.02/a.exe",
+  pageUrl: "https://github.com/QFgood/mediary-scout-o0521/releases/tag/v2026.10.02",
+  dmgUrl: "https://github.com/QFgood/mediary-scout-o0521/releases/download/v2026.10.02/a.dmg",
+  exeUrl: "https://github.com/QFgood/mediary-scout-o0521/releases/download/v2026.10.02/a.exe",
 };
 const idle: UpdaterStatus = {
   phase: "idle",

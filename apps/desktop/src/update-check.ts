@@ -1,6 +1,7 @@
 import { appVersionFromTag, isNewerAppVersion } from "./release-version.js";
 
-export const RELEASES_LATEST_URL = "https://api.github.com/repos/fancydirty/mediary-scout/releases/latest";
+const REPOSITORY = "QFgood/mediary-scout-o0521";
+export const RELEASES_LATEST_URL = `https://api.github.com/repos/${REPOSITORY}/releases/latest`;
 /** Wall-clock time between successful checks. */
 export const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
@@ -12,7 +13,7 @@ export interface LatestRelease {
 }
 
 /** Installers are only trusted from this repo's own release downloads. */
-const DOWNLOAD_PREFIX = "https://github.com/fancydirty/mediary-scout/releases/download/";
+const DOWNLOAD_PREFIX = `https://github.com/${REPOSITORY}/releases/download/`;
 
 /** GitHub's releases/latest body → the release, or null when it is not a date release (v1.4.1)
  *  or it does not yet include both a .dmg and an .exe from this repo. The release is created
@@ -26,7 +27,7 @@ export function parseLatestRelease(body: unknown): LatestRelease | null {
   const version = appVersionFromTag(tag);
   if (!version) return null;
   if (!hasOwnInstaller(data.assets, ".dmg") || !hasOwnInstaller(data.assets, ".exe")) return null;
-  return { tag, version, pageUrl: `https://github.com/fancydirty/mediary-scout/releases/tag/${tag}` };
+  return { tag, version, pageUrl: `https://github.com/${REPOSITORY}/releases/tag/${tag}` };
 }
 
 function hasOwnInstaller(assets: unknown, extension: string): boolean {
