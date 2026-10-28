@@ -2,17 +2,27 @@ import { createSocks5Fetch } from "./service-proxy";
 import type { ProxyService } from "./service-proxy-config";
 
 export interface ProxyProbeTarget { service: ProxyService; url: string }
-export interface ProxyProbeResult { service: ProxyService; ok: boolean; message: string; durationMs: number }
+export interface ProxyProbeResult { service: ProxyService | "proxy"; ok: boolean; message: string; durationMs: number }
 
 /** Read nested transport causes, but NEVER return their text: it can contain credentials. */
 export function proxyFailureMessage(error: unknown): string {
-  const chain: Array<{ name?: string; code?: string; message?: string; cause?: unknown }> = [];
-  let current = error;
-  while (current && typeof current === "object" && chain.length < 6 && !chain.includes(current)) {
-    chain.push(current); current = chain.at(-1)?.cause;
+  const chain: Array<{ name?: string; code?: string; message?: string; cause?: unknown; errors?: unknown[] }> = [];
+  const pending = [error];
+  while (pending.length && chain.length < 12) {
+    const current = pending.shift();
+    if (!current || typeof current !== "object" || chain.includes(current)) continue;
+    chain.push(current);
+    const item = chain.at(-1)!;
+    pending.push(item.cause);
+    if (Array.isArray(item.errors)) pending.push(...item.errors.slice(0, 6));
   }
   const codes = chain.map((e) => e.code ?? "");
   const text = chain.map((e) => e.message ?? "").join(" ");
+  const hasCode = (code: string) => codes.includes(code) || new RegExp(`\\b${code}\\b`).test(text);
+  if (hasCode("EHOSTUNREACH")) return "无法到达代理或目标主机（EHOSTUNREACH）；检查容器网络、路由和防火墙。";
+  if (hasCode("ENETUNREACH")) return "没有可用网络路由（ENETUNREACH）；检查容器到代理的网络路径。";
+  if (hasCode("ECONNRESET")) return "连接被重置（ECONNRESET）；检查代理协议、访问限制或出口线路。";
+  if (hasCode("EAI_AGAIN")) return "DNS 暂时解析失败（EAI_AGAIN），请检查容器 DNS。";
   if (/authentication|no accepted auth/i.test(text)) return "SOCKS5 认证失败，请检查代理用户名和密码。";
   if (/initial handshake|invalid socks version/i.test(text)) return "端口未返回有效 SOCKS5 握手，请确认填写的是 SOCKS5 或混合端口，而非 HTTP 代理端口。";
   if (codes.includes("ECONNREFUSED") || /\bECONNREFUSED\b/.test(text)) return "代理连接被拒绝，请检查监听地址、端口、允许局域网连接及容器访问权限。";
@@ -20,7 +30,9 @@ export function proxyFailureMessage(error: unknown): string {
   if (codes.some((code) => /CERT|TLS|SSL/.test(code))) return "代理隧道后的 TLS 验证失败，请检查证书、系统时间或代理 HTTPS 拦截。";
   if (chain.some((e) => /TimeoutError|AbortError/.test(e.name ?? "")) || /timed out|timeout/i.test(text) || codes.includes("ETIMEDOUT")) return "15 秒内未完成连接；请检查代理可达性、出口线路及目标服务是否被阻断。";
   if (/proxy rejected connection|final handshake/i.test(text)) return "SOCKS5 已响应，但拒绝连接目标服务，请检查代理规则、DNS 和出口线路。";
-  return "代理访问失败，请检查 SOCKS5 协议、代理监听地址及出口线路。容器内 127.0.0.1 指容器自身。";
+  if (/socket closed/i.test(text) || hasCode("UND_ERR_SOCKET")) return "代理或目标提前关闭连接（SOCKET_CLOSED）；请检查代理协议、访问控制和出口。";
+  const names = [...new Set(chain.map((e) => e.name).filter((name) => ["TypeError", "Error", "SocksClientError", "AggregateError"].includes(name ?? "")))].join(" → ");
+  return `代理访问失败（${names || "UNKNOWN_TRANSPORT_ERROR"}），请检查 SOCKS5 协议、代理监听地址及出口线路。容器内 127.0.0.1 指容器自身。`;
 }
 
 /** Explicit, uncached requests: no saved keys, billable Jev inference or application cache. */
