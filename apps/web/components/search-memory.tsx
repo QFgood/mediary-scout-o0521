@@ -5,16 +5,19 @@ import { Search } from "lucide-react";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { lastQueryKey } from "@media-track/workflow/scope";
+import { metadataSearchHref, parseMediaSource, type MediaSource } from "../lib/metadata/types";
 
 /** Persists the current search query (per drive) so navigation can restore it. */
-export function RememberQuery({ query, basePath = "/" }: { query: string; basePath?: string }) {
+export function RememberQuery({ query, basePath = "/", source = "tmdb", anilistId = "" }: { query: string; basePath?: string; source?: MediaSource; anilistId?: string }) {
   useEffect(() => {
     try {
       sessionStorage.setItem(lastQueryKey(basePath), query);
+      sessionStorage.setItem(`${lastQueryKey(basePath)}:source`, source);
+      sessionStorage.setItem(`${lastQueryKey(basePath)}:anilistId`, anilistId);
     } catch {
       // storage unavailable — nothing to remember
     }
-  }, [query, basePath]);
+  }, [query, basePath, source, anilistId]);
   return null;
 }
 
@@ -38,18 +41,21 @@ export function SearchNavLink({
       className={`nav-item ${active ? "is-active" : ""}`}
       href={`${basePath}?tab=search&q=${encodeURIComponent(knownQuery)}`}
       onClick={(event) => {
-        if (knownQuery) {
-          return; // server-known query already in href
-        }
         let remembered = "";
+        let source: MediaSource = "tmdb";
+        let anilistId: number | undefined;
         try {
           remembered = sessionStorage.getItem(lastQueryKey(basePath)) ?? "";
+          source = parseMediaSource(sessionStorage.getItem(`${lastQueryKey(basePath)}:source`) ?? "");
+          const rawId = sessionStorage.getItem(`${lastQueryKey(basePath)}:anilistId`) ?? "";
+          const id = Number(rawId);
+          if (/^[1-9]\d*$/.test(rawId) && Number.isSafeInteger(id) && id <= 2_147_483_647) anilistId = id;
         } catch {
           remembered = "";
         }
-        if (remembered) {
+        if (remembered || knownQuery || anilistId) {
           event.preventDefault();
-          router.push(`${basePath}?tab=search&q=${encodeURIComponent(remembered)}`);
+          router.push(metadataSearchHref(basePath, source, knownQuery || remembered, anilistId));
         }
       }}
     >

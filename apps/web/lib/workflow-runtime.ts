@@ -1,5 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
 import { isAgentMemoryEnabled } from "./agent-memory-server";
+import { anilistClient } from "./anilist/client";
+import { getAniListTaskCompatibility } from "./anilist/task";
+import { parseAniListCandidateId } from "./metadata/task-adapter";
 import { cache } from "react";
 import {
   checkLoginAllowed,
@@ -834,6 +837,28 @@ export async function queueCandidateTracking(
   }
   if (workspace.frozen) {
     return { status: "unsupported", message: frozenDriveMessage(workspace.provider, "获取") };
+  }
+  // AniList IDs only enter through the explicit compatibility adapter. Re-fetch
+  // server metadata and re-check mappings; client-supplied IDs/counts are not trusted.
+  if (candidateId.startsWith("anilist_")) {
+    const id = parseAniListCandidateId(candidateId);
+    if (id === null) return { status: "unsupported", message: "AniList 作品标识无效。" };
+    try {
+      const media = await anilistClient.details(id);
+      if (!media) return { status: "unsupported", message: "未找到该 AniList 作品。" };
+      const compatibility = await getAniListTaskCompatibility(media, accountId);
+      if (!compatibility.supported) return { status: "unsupported", message: compatibility.reason };
+      const request = await queueTrackingInitialization({
+        ...compatibility.target, repository: getWorkflowRepository(),
+        accountId, connectedStorageId: workspace.id,
+      });
+      return {
+        status: request.status === "completed" ? "queued" : request.status,
+        workflowRunId: request.workflowRunId, trackedSeasonId: request.trackedSeasonId,
+      };
+    } catch {
+      return { status: "unsupported", message: "AniList 元数据暂时不可用，未提交获取任务，请稍后重试。" };
+    }
   }
   const movieTmdbId = parseMovieCandidateId(candidateId);
   if (movieTmdbId !== null) {

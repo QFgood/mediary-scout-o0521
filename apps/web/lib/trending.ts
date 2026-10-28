@@ -1,5 +1,6 @@
 import { fetchTmdbList } from "@media-track/workflow";
 import { getTmdbAccesses, getAccountScopedSettings, getCurrentAccountId } from "./workflow-runtime";
+import { anilistClient, type AnimeFeed } from "./anilist/client";
 
 export type TrendingKind = "movie" | "tv" | "anime";
 
@@ -9,6 +10,15 @@ export interface TrendingCard {
   year: number | null;
   posterPath: string | null;
   mediaType: "movie" | "tv";
+}
+
+export type DiscoveryCard = TrendingCard | {
+  source: "anilist"; anilistId: number; title: string; year: number | null;
+  posterUrl: string | null; mediaType: "movie" | "tv";
+};
+
+export function parseAnimeFeed(value: string): AnimeFeed {
+  return value === "season" || value === "upcoming" ? value : "trending";
 }
 
 /** The three discovery feeds, aligned to the app's 电影/剧集/动漫 library types.
@@ -95,7 +105,19 @@ export function mapTrendingResults(raw: unknown, kind: TrendingKind): TrendingCa
 
 /** Fetch + map one feed. Any failure → [] (silent degrade; the row hides and the
  *  search page falls back to its original empty state). Never throws. */
-export async function getTrending(kind: TrendingKind): Promise<TrendingCard[]> {
+export async function getTrending(kind: TrendingKind, animeFeed: AnimeFeed = "trending"): Promise<DiscoveryCard[]> {
+  if (kind === "anime") {
+    try {
+      const media = await anilistClient.trending(animeFeed);
+      if (media.length) return media.map((item) => ({
+        source: "anilist" as const, anilistId: item.anilistId, title: item.title,
+        year: item.year, posterUrl: item.posterUrl, mediaType: item.mediaType === "movie" ? "movie" : "tv",
+      }));
+    } catch {
+      // The client first tries its bounded historical cache. With no usable
+      // AniList data, use the original TMDB anime feed independently.
+    }
+  }
   try {
     const accesses = await getTmdbAccesses(getAccountScopedSettings(await getCurrentAccountId()));
     const raw = await fetchTmdbList(accesses, TRENDING_KINDS[kind].path, trendingFeedQuery(kind));

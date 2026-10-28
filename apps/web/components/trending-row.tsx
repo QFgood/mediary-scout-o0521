@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Film, RefreshCw, Search } from "lucide-react";
 import { getTrending, TRENDING_KINDS, TRENDING_KIND_ORDER, type TrendingKind } from "../lib/trending";
+import { metadataSearchHref, type MediaSource } from "../lib/metadata/types";
+import type { AnimeFeed } from "../lib/anilist/client";
 
 const POSTER = "https://image.tmdb.org/t/p/w342";
 
@@ -13,11 +15,16 @@ const POSTER = "https://image.tmdb.org/t/p/w342";
 export async function TrendingRow({
   activeKind,
   basePath,
+  source = "tmdb",
+  animeFeed = "trending",
 }: {
   activeKind: TrendingKind;
   basePath: string;
+  source?: MediaSource;
+  animeFeed?: AnimeFeed;
 }) {
-  const cards = await getTrending(activeKind);
+  const cards = await getTrending(activeKind, animeFeed);
+  const fromAniList = cards.some((card) => "source" in card && card.source === "anilist");
   if (cards.length === 0) {
     return (
       <div className="quiet-state">
@@ -36,27 +43,37 @@ export async function TrendingRow({
             <Link
               key={kind}
               className={`filter-pill ${kind === activeKind ? "is-active" : ""}`}
-              href={`${basePath}?trending=${kind}`}
+              href={`${basePath}?trending=${kind}&source=${source === "anilist" && kind === "anime" ? "anilist" : "tmdb"}`}
             >
               {TRENDING_KINDS[kind].label}
             </Link>
           ))}
         </div>
         <span className="trending-note">
-          <RefreshCw size={12} aria-hidden /> 每日更新 · 来自 TMDB
+          <RefreshCw size={12} aria-hidden /> 每日更新 · 来自 {fromAniList ? "AniList" : activeKind === "anime" ? "TMDB（AniList 暂不可用）" : "TMDB"}
         </span>
       </div>
+      {activeKind === "anime" ? <nav className="trending-tabs" aria-label="动漫榜单">
+        {([["season", "当季动画"], ["trending", "近期热门"], ["upcoming", "即将播出"]] as const).map(([feed, label]) => (
+          <Link key={feed} className={`filter-pill ${feed === animeFeed ? "is-active" : ""}`}
+            aria-current={feed === animeFeed ? "page" : undefined}
+            href={`${basePath}?trending=anime&source=${source}&animeFeed=${feed}`}>{label}</Link>
+        ))}
+      </nav> : null}
       <div className="trending-grid">
-        {cards.map((card, index) => (
+        {cards.map((card, index) => {
+          const ani = "anilistId" in card;
+          const poster = ani ? card.posterUrl : card.posterPath ? `${POSTER}${card.posterPath}` : null;
+          return (
           <Link
-            key={`${card.mediaType}_${card.tmdbId}`}
+            key={ani ? `anilist_${card.anilistId}` : `${card.mediaType}_${card.tmdbId}`}
             className="trending-card"
-            href={`${basePath}?q=${encodeURIComponent(card.title)}`}
+            href={metadataSearchHref(basePath, ani ? "anilist" : "tmdb", card.title, ani ? card.anilistId : undefined)}
           >
             <div className="trending-poster">
-              {card.posterPath ? (
+              {poster ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`${POSTER}${card.posterPath}`} alt="" loading="lazy" />
+                <img src={poster} alt="" loading="lazy" />
               ) : (
                 <Film size={24} aria-hidden />
               )}
@@ -67,7 +84,7 @@ export async function TrendingRow({
               {card.year ?? "—"} · {activeKind === "anime" ? "动漫" : card.mediaType === "movie" ? "电影" : "剧集"}
             </span>
           </Link>
-        ))}
+        ); })}
       </div>
     </section>
   );
