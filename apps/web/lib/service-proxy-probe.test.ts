@@ -27,6 +27,9 @@ describe("proxy diagnostics", () => {
     expect(fetchImpl.mock.calls[0]?.[1]).not.toHaveProperty("body");
   });
   it.each([
+    [new AggregateError([Object.assign(new Error("private address secret"), { code: "EHOSTUNREACH" })]), "EHOSTUNREACH"],
+    [new Error("fetch failed", { cause: new Error("connect ENETUNREACH secret") }), "ENETUNREACH"],
+    [new Error("Socket closed secret"), "SOCKET_CLOSED"],
     [new Error("fetch failed", { cause: Object.assign(new Error("secret"), { code: "ECONNREFUSED" }) }), "连接被拒绝"],
     [new Error("fetch failed", { cause: new Error("Received invalid Socks5 initial handshake (invalid socks version) secret") }), "SOCKS5 握手"],
     [new Error("fetch failed", { cause: new Error("Socks5 Authentication failed secret") }), "认证失败"],

@@ -36,6 +36,7 @@ describe("Jev settings actions", () => {
     delete process.env.JEV_API_KEY;
     delete process.env.JEV_BASE_URL;
     probeMock.mockReset();
+    vi.doMock("../lib/socks5-entry-probe", () => ({ probeSocks5Entry: async () => ({ ok: true, message: "entry ok", durationMs: 1 }) }));
     repo = new InMemoryWorkflowRepository();
     vi.resetModules();
     vi.doMock("../lib/workflow-runtime", async () => {
@@ -63,6 +64,7 @@ describe("Jev settings actions", () => {
     vi.doUnmock("../lib/workflow-runtime");
     vi.doUnmock("../lib/jev-probe");
     vi.doUnmock("../lib/service-proxy-probe");
+    vi.doUnmock("../lib/socks5-entry-probe");
     vi.resetModules();
     if (prevDemo !== undefined) process.env.MEDIA_TRACK_DEMO_MODE = prevDemo;
     else delete process.env.MEDIA_TRACK_DEMO_MODE;
@@ -301,6 +303,15 @@ describe("Jev settings actions", () => {
 
   describe("selective SOCKS5 settings", () => {
     const key = "service_socks5_proxy";
+    it("stops before service requests when the proxy entry fails", async () => {
+      vi.doMock("../lib/socks5-entry-probe", () => ({ probeSocks5Entry: async () => ({ ok: false, message: "EHOSTUNREACH", durationMs: 5 }) }));
+      const probe = vi.fn();
+      vi.doMock("../lib/service-proxy-probe", () => ({ probeServiceProxy: probe }));
+      const result = await actions.testServiceProxyAction({ url: "socks5://proxy.test:1080", services: ["anilist", "tmdb"] });
+      expect(result.results).toEqual([{ service: "proxy", ok: false, message: "EHOSTUNREACH", durationMs: 5 }]);
+      expect(probe).not.toHaveBeenCalled();
+      expect(await repo.getAccountSetting(ACCOUNT_ID, key)).toBeNull();
+    });
     it("tests the account's saved address and selected endpoints without saving or changing Jev health", async () => {
       const probe = vi.fn(async () => [{ service: "anilist", ok: false, message: "HTTP 403", durationMs: 10 }]);
       vi.doMock("../lib/service-proxy-probe", () => ({ probeServiceProxy: probe }));
@@ -308,7 +319,7 @@ describe("Jev settings actions", () => {
       await repo.setAccountSetting(ACCOUNT_ID, "anilist_api_url", "https://account.example/graphql");
       const writes = vi.spyOn(repo, "setAccountSetting");
       const result = await actions.testServiceProxyAction({ url: "", services: ["anilist"] });
-      expect(result.results?.[0]?.message).toBe("HTTP 403");
+      expect(result.results?.[1]?.message).toBe("HTTP 403");
       expect(probe).toHaveBeenCalledWith("socks5://user:secret@proxy.test:1080", [{ service: "anilist", url: "https://account.example/graphql" }]);
       expect(writes).not.toHaveBeenCalled();
       expect(JSON.stringify(result)).not.toContain("secret");

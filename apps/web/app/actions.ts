@@ -924,8 +924,11 @@ export async function testServiceProxyAction(input: { url: string; services: str
       }
       targets.push({ service, url: endpoint });
     }
+    const { probeSocks5Entry } = await import("../lib/socks5-entry-probe");
+    const entry = { service: "proxy" as const, ...await probeSocks5Entry(url) };
+    if (!entry.ok) return { success: true, results: [entry] };
     const results = await probeServiceProxy(url, targets);
-    return { success: true, results };
+    return { success: true, results: [entry, ...results] };
   } catch { return { success: false, message: "无法完成代理测试，请检查服务配置后重试。" }; }
 }
 

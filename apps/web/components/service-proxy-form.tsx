@@ -27,7 +27,7 @@ export function ServiceProxyForm({ configured, services: initialServices }: { co
     }
   });
   const test = () => startTransition(async () => {
-    setTesting(true); setResults([]); setMessage("正在通过代理测试所选服务，每项最多等待 15 秒……");
+    setTesting(true); setResults([]); setMessage("正在检查代理入口（最多 5 秒），随后测试所选服务（每项最多 15 秒）……");
     try {
       const result = await runAction(() => testServiceProxyAction({ url, services }), setMessage);
       if (!result.ok) return;
@@ -59,7 +59,7 @@ export function ServiceProxyForm({ configured, services: initialServices }: { co
       </div>
       <p className="panel-note">测试使用当前输入的地址（留空使用已存地址）和勾选项，无需先保存；不发送服务密钥或执行 Jev 推理。容器内 127.0.0.1 指容器自身。</p>
       {results.length ? <ul aria-label="代理测试结果" className="panel-note">
-        {results.map((item) => <li key={item.service}>{item.ok ? "✅" : "❌"} {PROXY_SERVICE_LABELS[item.service]}：{item.message}（{item.durationMs} ms）</li>)}
+        {results.map((item) => <li key={item.service}>{item.ok ? "✅" : "❌"} {item.service === "proxy" ? "代理入口" : PROXY_SERVICE_LABELS[item.service]}：{item.message}（{item.durationMs} ms）</li>)}
       </ul> : null}
     </div>
   );
