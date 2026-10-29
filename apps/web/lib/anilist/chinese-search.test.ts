@@ -27,7 +27,7 @@ describe("AniList localized name search", () => {
     expect(view.candidates[0]).not.toHaveProperty("tmdbId");
   });
 
-  it("leaves native/Latin inputs, existing results, and explicit IDs untouched", async () => {
+  it("leaves native/Latin inputs and explicit IDs untouched, without TMDB calls for existing matches", async () => {
     const lookup = vi.fn();
     for (const query of [native, "Alya", "ロシア語 中文"]) {
       await getAniListSearchView(query, undefined, { search: async () => [], details: vi.fn() }, lookup);
@@ -39,7 +39,7 @@ describe("AniList localized name search", () => {
     expect(search).not.toHaveBeenCalled();
   });
 
-  it("deduplicates and limits aliases, rejects fuzzy unrelated results, and keeps successful probes", async () => {
+  it("deduplicates and limits aliases, preserves native results, and keeps successful probes", async () => {
     const search = vi.fn(async (name: string) => {
       if (name === "bad") throw new Error("unavailable");
       if (name === native || name === media.aliases[0]) return [media, { ...media, anilistId: 2, title: "Other", originalTitle: "Other", aliases: [] }];
@@ -48,8 +48,39 @@ describe("AniList localized name search", () => {
     const view = await getAniListSearchView("艾莉同学", undefined, { search, details: vi.fn() }, async () => [native, native, media.aliases[0]!, "bad", "unused"]);
     expect(search).toHaveBeenCalledTimes(4);
     expect(search).not.toHaveBeenCalledWith("unused");
-    expect(view.candidates).toEqual([media]);
+    expect(view.candidates.map((item) => item.anilistId)).toEqual([media.anilistId, 2]);
     expect(view.nameLookupUnavailable).toBe(true);
+  });
+
+  it.each([true, false])("returns the same nine native-query results when Chinese initially matches season 1: %s", async (hasChineseMatch) => {
+    const name = "薬屋のひとりごと";
+    const first = { ...media, anilistId: 161645, title: name, originalTitle: name, aliases: ["药屋少女的呢喃"] };
+    const nativeResults = [first, ...Array.from({ length: 8 }, (_, index) => ({ ...first, anilistId: 200000 + index,
+      title: index === 0 ? "猫猫のひとりごと" : `${name} 第${index + 2}期`,
+      originalTitle: index === 0 ? "猫猫のひとりごと" : `${name} 第${index + 2}期`, aliases: [] }))];
+    const search = vi.fn(async (query: string) => query === name ? nativeResults : hasChineseMatch ? [first] : []);
+    const lookup = vi.fn(async () => [name]);
+    const chinese = await getAniListSearchView("药屋少女的呢喃", undefined, { search, details: vi.fn() }, lookup);
+    const japanese = await getAniListSearchView(name, undefined, { search, details: vi.fn() }, lookup);
+    expect(chinese.candidates).toEqual(japanese.candidates);
+    expect(chinese.candidates).toHaveLength(9);
+    expect(chinese.resolvedQueries).toEqual([name]);
+    expect(chinese.query).toBe("药屋少女的呢喃");
+    expect(lookup).toHaveBeenCalledTimes(hasChineseMatch ? 0 : 1);
+    expect(chinese.candidates.every((item) => item.source === "anilist" && !("tmdbId" in item))).toBe(true);
+  });
+
+  it("keeps direct Chinese matches when the native search fails, and does not call TMDB", async () => {
+    const search = vi.fn(async (query: string) => { if (query === native) throw new Error("rate limit"); return [media]; });
+    const lookup = vi.fn();
+    expect(await getAniListSearchView("中文", undefined, { search, details: vi.fn() }, lookup))
+      .toMatchObject({ state: "ready", candidates: [media], nameLookupUnavailable: true });
+    expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it("rejects unanchored TMDB search names instead of displaying unrelated matches", async () => {
+    const search = vi.fn(async (query: string) => query === "中文" ? [] : [media]);
+    expect((await getAniListSearchView("中文", undefined, { search, details: vi.fn() }, async () => ["Unrelated Work"])).candidates).toEqual([]);
   });
 
   it("matches harmless spacing and punctuation differences", async () => {
