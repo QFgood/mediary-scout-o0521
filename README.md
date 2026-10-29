@@ -31,20 +31,13 @@
 ### Docker（NAS / 软路由 / 服务器）
 
 ```bash
-git clone https://github.com/fancydirty/mediary-scout && cd mediary-scout
+git clone https://github.com/QFgood/mediary-scout-o0521 && cd mediary-scout-o0521
 docker compose up -d
 ```
 
 打开 `http://<主机IP>:3000`，在设置里配置。以后在 **设置 → 更新** 里一键升级，也可以设成每天自动更新。国内构建加速、Tailscale / Cloudflare Tunnel 远程访问、多用户、备份，以及让 AI agent 替你部署的提示词，都在 **[部署指南](docs/deploy.md)**。
 
-| | 桌面版 | Docker |
-|---|---|---|
-| 适合 | 自己用，Mac / Windows | NAS、服务器，常开 |
-| 定时巡检补缺 | 应用开着时才跑 | 24 小时 |
-| 多用户 | 不支持 | 支持 |
-| 手机、出门访问 | 仅本机 | Tailscale / Cloudflare Tunnel |
-
-两种形态下，自带 OpenAI 兼容的 AI 模型接口都是可选升级（key 只存在你自己的实例里）。未配置 AI 模型时，默认使用 Kilo Code 的公共免费模型池（无需注册；获取任务的对话上下文——搜索查询、任务与留言内容、候选结果、文件名等——会发送给 Kilo 及其上游模型提供商）。影视信息开箱即用。资源搜索用 PanSou：Docker 版自带一个，桌面版默认用公共实例，可以在设置里换成你自己的；可选再接 Prowlarr 找磁力。
+自带 OpenAI 兼容的 AI 模型接口是可选升级（key 只存在你自己的实例里）。未配置 AI 模型时，默认使用 Kilo Code 的公共免费模型池（无需注册；获取任务的对话上下文——搜索查询、任务与留言内容、候选结果、文件名等——会发送给 Kilo 及其上游模型提供商）。影视信息开箱即用。资源搜索用 PanSou：Docker 版自带一个，桌面版默认用公共实例，可以在设置里换成你自己的；可选再接 Prowlarr 找磁力。
 
 ## 支持的网盘
 
