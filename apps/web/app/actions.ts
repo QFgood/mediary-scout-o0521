@@ -1,5 +1,15 @@
 "use server";
 
+export async function retryLibraryFailuresAction(storageId?: string) {
+  assertNotDemo();
+  const runtime = await import("../lib/workflow-runtime");
+  const scope = await runtime.getActiveWorkspaceScope(storageId);
+  const { retryLibraryFailures } = await import("../lib/retry-library");
+  const report = await retryLibraryFailures(runtime.getWorkflowRepository(), scope);
+  revalidatePath("/", "layout");
+  return report;
+}
+
 import { revalidatePath } from "next/cache";
 import { queueCandidateSeries, queueCandidateTracking, reserveCandidate } from "../lib/workflow-runtime";
 import { assertNotDemo } from "../lib/demo-mode";

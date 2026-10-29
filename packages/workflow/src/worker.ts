@@ -752,7 +752,7 @@ async function patrolTrackedState(args: {
       return (await patrolMovie({ input, deps, state, now })) ?? null;
     }
 
-    if (state.season.status !== "active" || state.episodes.length === 0) {
+    if (state.season.status !== "active" || (state.episodes.length === 0 && state.title.source !== "anilist")) {
       return null;
     }
 
@@ -776,6 +776,7 @@ async function patrolTrackedState(args: {
           });
           season = state.title.source === "anilist" ? { ...synced.season, latestAiredSource: "metadata" } : synced.season;
           episodes = synced.episodes;
+          if (meta.title?.id === state.title.id) state = { ...state, title: meta.title };
         }
       } catch (error) {
         console.warn(
@@ -784,6 +785,7 @@ async function patrolTrackedState(args: {
       }
     }
 
+    if (state.title.source === "anilist" && (!episodes.length || season.latestAiredEpisode === 0)) return null;
     const workflowRunId = input.createWorkflowRunId?.() ?? crypto.randomUUID();
     const startedAt = now();
     const staleActiveRunStartedBefore = staleStartedBefore(

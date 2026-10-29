@@ -851,6 +851,7 @@ export async function queueCandidateTracking(
     try {
       const media = await (await getAniListClient(accountId)).details(id);
       if (!media) return { status: "unsupported", message: "未找到该 AniList 作品。" };
+      if (media.status === "NOT_YET_RELEASED" && media.format !== "MOVIE") return { status: "unsupported", message: "该动画尚未播出，请使用预定。" };
       const compatibility = await getAniListAcquisitionTarget(media, accountId);
       if (!compatibility.supported) return { status: "unsupported", message: compatibility.reason };
       if (compatibility.target.title.type === "movie") {
@@ -1598,14 +1599,19 @@ export async function reserveCandidate(
   }
   const movieTmdbId = parseMovieCandidateId(candidateId);
   const anilistId = parseAniListCandidateId(candidateId);
+  let animeReservation: import("@media-track/workflow").PreparedTrackingTarget | null = null;
   let movie: { title: MediaTitle; keyword: string } | null = null;
   if (anilistId !== null) {
     try {
       const media = await (await getAniListClient(accountId)).details(anilistId);
       const native = media ? prepareNativeAniListTarget(media) : null;
-      if (!native?.supported || native.target.title.type !== "movie") return { status: "unsupported", message: "该 AniList 条目不是可预定的电影。" };
+      if (!native?.supported) return { status: "unsupported", message: "该 AniList 条目暂不可预定。" };
+      if (native.target.title.type !== "movie") {
+        if (media?.status !== "NOT_YET_RELEASED") return { status: "unsupported", message: "该动画已播出，请刷新后获取。" };
+        animeReservation = native.target;
+      }
       movie = native.target;
-      if (!isMovieUnreleased(movie.title.releaseDate, new Date().toISOString(), movie.title.anilistStatus)) return { status: "unsupported", message: "该电影已上映，请刷新后直接获取。" };
+      if (!animeReservation && !isMovieUnreleased(movie.title.releaseDate, new Date().toISOString(), movie.title.anilistStatus)) return { status: "unsupported", message: "该电影已上映，请刷新后直接获取。" };
     } catch { return { status: "unsupported", message: "无法读取 AniList 电影上映状态，请稍后重试。" }; }
   } else if (movieTmdbId !== null) movie = await movieTargetFromTmdbId(movieTmdbId);
   else return { status: "unsupported", message: "只有电影可以预定。" };
@@ -1618,6 +1624,10 @@ export async function reserveCandidate(
   }
   if (workspace.frozen) {
     return { status: "unsupported", message: frozenDriveMessage(workspace.provider, "预定") };
+  }
+  if (animeReservation) {
+    const { reserveAniListSeries } = await import("./anilist/reservation");
+    return reserveAniListSeries(animeReservation, getWorkflowRepository(), { accountId, connectedStorageId: workspace.id });
   }
   const request = await reserveMovie({
     title: movie.title,
@@ -2118,7 +2128,7 @@ function seasonMetadataSync(): SeasonMetadataSync | undefined {
       if (!native.supported) throw new Error(native.reason);
       if (native.target.title.type === "movie") return { latestAiredEpisode: 1, totalEpisodes: 1, title: native.target.title };
       if (native.target.season.latestAiredSource === "unknown") return null;
-      return { latestAiredEpisode: native.target.season.latestAiredEpisode, totalEpisodes: native.target.season.totalEpisodes };
+      return { latestAiredEpisode: native.target.season.latestAiredEpisode, totalEpisodes: native.target.season.totalEpisodes, title: native.target.title };
     }
     if (process.env.MEDIA_TRACK_SEARCH_PROVIDER !== "tmdb") return null;
     const target = await prepareTrackingTarget({

@@ -1,3 +1,4 @@
+import { SearchLoadComplete } from "./search-load-status";
 import Link from "next/link";
 import { TriangleAlert } from "lucide-react";
 import { mediaHref } from "@media-track/workflow/scope";
@@ -21,6 +22,7 @@ export async function AniListResults({ query, selectedId, basePath, storageId, a
   if (view.state === "empty") return <TrendingRow activeKind="anime" basePath={basePath} source="anilist" animeFeed={animeFeed} />;
   if (view.state === "provider_error") return (
     <section className="search-results" aria-label="AniList 搜索结果">
+      <SearchLoadComplete failed />
       <div className="quiet-state compact" role="alert">
         <TriangleAlert size={22} aria-hidden />
         <strong>暂时连不上 AniList 元数据服务</strong>
@@ -56,7 +58,7 @@ export async function AniListCandidateCard({ media, storageId }: { media: AniLis
   const externalHref = `https://anilist.co/anime/${media.anilistId}`;
   const detailHref = compatibility.supported ? mediaHref(compatibility.target.title, "search", storageId) : externalHref;
   const address = compatibility.supported ? compatibility.target.title : null;
-  const unreleased = address?.type === "movie" && isMovieUnreleased(address.releaseDate, new Date().toISOString(), address.anilistStatus);
+  const unreleased = media.status === "NOT_YET_RELEASED" || (address?.type === "movie" && isMovieUnreleased(address.releaseDate, new Date().toISOString(), address.anilistStatus));
   return (
     <article className="candidate-card">
       <Link className="candidate-poster" href={detailHref} aria-label={`${media.title} 的详情`}>

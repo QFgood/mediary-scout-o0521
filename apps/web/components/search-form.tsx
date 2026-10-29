@@ -1,6 +1,7 @@
 "use client";
 
-import { Search } from "lucide-react";
+import { useTransition } from "react";
+import { Search, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { metadataSearchHref, type MediaSource } from "../lib/metadata/types";
 
@@ -23,6 +24,7 @@ export function SearchForm({
   source?: MediaSource;
 }) {
   const router = useRouter();
+  const [pending, startTransition] = useTransition();
   return (
     <form
       className="search-form"
@@ -31,7 +33,7 @@ export function SearchForm({
       onSubmit={(event) => {
         event.preventDefault();
         const value = String(new FormData(event.currentTarget).get("q") ?? "");
-        router.push(metadataSearchHref(basePath, source, value));
+        startTransition(() => router.push(metadataSearchHref(basePath, source, value)));
       }}
     >
       <input type="hidden" name="tab" value="search" />
@@ -49,9 +51,9 @@ export function SearchForm({
           defaultValue={defaultQuery}
         />
       </label>
-      <button className="primary-button" type="submit">
-        <Search size={16} aria-hidden />
-        搜索
+      <button className="primary-button" type="submit" disabled={pending}>
+        {pending ? <LoaderCircle size={16} className="spin" aria-hidden /> : <Search size={16} aria-hidden />}
+        {pending ? "加载中…" : "搜索"}
       </button>
     </form>
   );
