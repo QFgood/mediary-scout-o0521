@@ -3023,6 +3023,66 @@ export interface ForeignWorkFinding {
   files: Array<{ providerFileId: string; sourcePath: string }>;
 }
 
+const librarySyncs = new Map<string, Promise<import("@media-track/workflow").LibrarySyncReport>>();
+
+/** Recover library records from this account's active drive. Explicit ownership and
+ * credential checks prevent the legacy env-drive fallback from scanning another drive. */
+export async function syncCurrentDriveLibrary(storageId?: string): Promise<import("@media-track/workflow").LibrarySyncReport> {
+  const scope = await getActiveWorkspaceScope(storageId);
+  if (!scope.connectedStorageId) throw new Error("请先在设置中绑定原来的网盘，再同步媒体库。");
+  const key = `${scope.accountId}:${scope.connectedStorageId}`;
+  const running = librarySyncs.get(key);
+  if (running) return running;
+  const operation = whileInFlight(async () => {
+    if (isUpdateHoldActive(Date.now())) throw new UpdateInProgressError();
+    const creds = await getAccountStorageCredentials(scope.accountId, scope.connectedStorageId);
+    if (!creds || creds.status !== "active") throw new Error("网盘未连接或登录已失效，请先重新绑定原来的网盘。");
+    if (!creds.moviesCid || !creds.tvCid || !creds.animeCid) throw new Error("网盘分类目录不完整，请先在设置中重新连接。");
+    const workflow = await import("@media-track/workflow");
+    const settings = getAccountScopedSettings(scope.accountId);
+    const accesses = await getTmdbAccesses(settings);
+    const metadata = workflow.createTmdbMetadataProvider(accesses);
+    const search = workflow.createTmdbSearchProvider(accesses);
+    const executor = () => createExecutorForBrand({
+      provider: creds.provider,
+      ...(getStorageBrand(creds.provider).authKind === "token" ? { credential: creds.credential ?? {}, onCredentialRefresh: makeTokenPersister(scope.accountId, creds.id, creds.provider) } : { cookie: creds.cookie }),
+      scopeCids: [creds.rootCid, creds.moviesCid, creds.tvCid, creds.animeCid].filter((id): id is string => Boolean(id)), env: process.env,
+    });
+    const normalize = (value: string) => value.normalize("NFKC").replace(/\s+/g, "").toLowerCase();
+    return workflow.syncLibraryFromDrive({
+      scope, repository: getWorkflowRepository(),
+      storage: { listChildDirectories: (id) => executor().listChildDirectories(id), listTree: (input) => executor().listTree(input) },
+      categories: [{ id: creds.moviesCid, type: "movie" }, { id: creds.tvCid, type: "tv" }, { id: creds.animeCid, type: "anime" }],
+      resolveTarget: async (folder, seasonNumber) => {
+        if (folder.source === "anilist") {
+          if (seasonNumber !== 1) throw new Error("AniList 条目只能恢复相对季度 1。");
+          const media = await (await getAniListClient(scope.accountId)).details(folder.id!);
+          if (!media) throw new Error("AniList 作品不存在。");
+          const result = prepareNativeAniListTarget(media);
+          if (!result.supported) throw new Error(result.reason);
+          return result.target;
+        }
+        let id = folder.id;
+        if (!id) {
+          const candidates = (await search.searchMedia({ query: folder.title })).filter((candidate) =>
+            candidate.mediaType === (folder.category === "movie" ? "movie" : "tv") && candidate.year === folder.year &&
+            [candidate.title, candidate.originalTitle].some((name) => normalize(name) === normalize(folder.title)));
+          const unique = [...new Set(candidates.map((candidate) => candidate.tmdbId))];
+          if (unique.length !== 1) throw new Error("旧目录片名年份无法唯一匹配。");
+          id = unique[0]!;
+        }
+        if (folder.category === "movie") {
+          const target = await workflow.prepareMovieTarget({ tmdbId: id, qualityPreference: "4K", metadataProvider: metadata });
+          return { title: target.title, season: workflow.movieAnchorSeason({ titleId: target.title.id, qualityPreference: "4K", storageDirectoryId: "" }) };
+        }
+        return workflow.prepareTrackingTarget({ tmdbId: id, mediaType: "tv", seasonNumber, qualityPreference: "4K", metadataProvider: metadata });
+      },
+    });
+  });
+  librarySyncs.set(key, operation);
+  try { return await operation; } finally { if (librarySyncs.get(key) === operation) librarySyncs.delete(key); }
+}
+
 export interface ForeignWorkReview {
   workflowRunId: string;
   titleName: string;

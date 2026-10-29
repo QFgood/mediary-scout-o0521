@@ -9,6 +9,7 @@ export * from "./season-sync.js";
 export * from "./ports.js";
 export * from "./fakes.js";
 export * from "./episode-code.js";
+export * from "./library-drive-sync.js";
 export * from "./account-credentials.js";
 export * from "./workflow-scope.js";
 export * from "./auth/password.js";
