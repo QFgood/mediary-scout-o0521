@@ -1,5 +1,13 @@
 "use server";
 
+export async function prepareErrorReportAction(storageId?: string) {
+  const runtime = await import("../lib/workflow-runtime");
+  const scope = await runtime.getActiveWorkspaceScope(storageId);
+  const { buildErrorReport } = await import("../lib/error-report");
+  const { readBuildCommit } = await import("../lib/deployment-update-server");
+  return buildErrorReport(runtime.getWorkflowRepository(), scope, await readBuildCommit());
+}
+
 export async function retryLibraryFailuresAction(storageId?: string) {
   assertNotDemo();
   const runtime = await import("../lib/workflow-runtime");

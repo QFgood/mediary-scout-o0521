@@ -1,4 +1,4 @@
-import { SearchLoadBoundary, SearchLoadBadge, SearchLoadComplete } from "../components/search-load-status";
+import { SearchLoadBoundary, SearchLoadComplete } from "../components/search-load-status";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Library, TriangleAlert } from "lucide-react";
@@ -115,7 +115,7 @@ async function HomeSurface({
             <RememberQuery query={query} basePath={basePath} source={source} anilistId={anilistId} />
             <div className="search-hero">
               <div>
-                <div className="search-title-status"><h1>搜索</h1><SearchLoadBadge /></div>
+                <h1>搜索</h1>
                 <p>找到目标后发起获取，后台会处理资源判断、转存和验证。</p>
               </div>
               <SearchForm basePath={basePath} defaultQuery={query} source={source} />

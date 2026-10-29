@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { SearchLoadBadge } from "./search-load-status";
 import { Search, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { metadataSearchHref, type MediaSource } from "../lib/metadata/types";
@@ -55,6 +56,7 @@ export function SearchForm({
         {pending ? <LoaderCircle size={16} className="spin" aria-hidden /> : <Search size={16} aria-hidden />}
         {pending ? "加载中…" : "搜索"}
       </button>
+      <SearchLoadBadge />
     </form>
   );
 }

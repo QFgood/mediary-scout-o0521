@@ -1,3 +1,5 @@
+import { ClearNotifications } from "./clear-notifications";
+import { ErrorReportButton } from "./error-report-button";
 import { MetadataHealthPanel } from "./metadata-health";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -76,6 +78,7 @@ export function AppSidebar({
               <NotificationsNavBadge storageId={activeStorageId} />
             </Link>
           </li>
+          <li className="sidebar-notification-tools-item"><ClearNotifications storageId={activeStorageId} /></li>
           {/* 活动 + 设置 are secondary: on desktop they live in the footer; on the
               mobile top bar (footer hidden) they surface as nav items here. */}
           <li className="nav-activity-item">
@@ -129,6 +132,7 @@ export function AppSidebar({
           </span>
           <SettingsAttentionBadge storageId={activeStorageId} visibleWhen="desktop" />
         </Link>
+        <ErrorReportButton storageId={activeStorageId} />
       </div>
     </aside>
   );

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { isDemoModeClient } from "../lib/demo-mode";
 import { DEMO_ACQUIRED_EVENT, demoSessionNotifications, listDemoAcquisitions } from "../lib/demo-session";
-import { getLastSeen } from "../lib/notifications-seen";
+import { getLastSeen, LAST_SEEN_KEY, NOTIFICATIONS_SEEN_EVENT } from "../lib/notifications-seen";
 
 /** Unread count on the 通知 nav: notifications newer than this browser's last-seen
  *  watermark. Clears when the 通知 page is opened (which advances the watermark).
@@ -32,10 +32,16 @@ export function NotificationsNavBadge({ storageId }: { storageId?: string | unde
       }
     };
     void poll();
+    const onSeen = () => { setCount(0); void poll(); };
+    const onStorage = (event: StorageEvent) => { if (event.key === LAST_SEEN_KEY) onSeen(); };
+    window.addEventListener(NOTIFICATIONS_SEEN_EVENT, onSeen);
+    window.addEventListener("storage", onStorage);
     const id = setInterval(() => void poll(), 8000);
     return () => {
       alive = false;
       clearInterval(id);
+      window.removeEventListener(NOTIFICATIONS_SEEN_EVENT, onSeen);
+      window.removeEventListener("storage", onStorage);
     };
   }, [storageId]);
 
@@ -53,9 +59,11 @@ export function NotificationsNavBadge({ storageId }: { storageId?: string | unde
     recompute();
     const id = window.setInterval(recompute, 2000);
     window.addEventListener(DEMO_ACQUIRED_EVENT, recompute);
+    window.addEventListener(NOTIFICATIONS_SEEN_EVENT, recompute);
     return () => {
       window.clearInterval(id);
       window.removeEventListener(DEMO_ACQUIRED_EVENT, recompute);
+      window.removeEventListener(NOTIFICATIONS_SEEN_EVENT, recompute);
     };
   }, []);
 
