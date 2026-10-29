@@ -26,33 +26,37 @@ export async function getAniListSearchView(query: string, selectedId?: string, c
     const candidates = await provider.search(normalized);
     // Han-only inputs include Chinese names and some Japanese titles. Kana and
     // Latin inputs already work natively; never translate or rewrite those.
-    if (candidates.length || !/\p{Script=Han}/u.test(normalized) || /[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(normalized)) {
+    if (!/\p{Script=Han}/u.test(normalized) || /[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(normalized)) {
       return { query: normalized, state: "ready", candidates };
     }
     try {
-      const names = [...new Set((await lookupNames(normalized)).map((name) => name.trim().slice(0, 200)))]
+      // A localized alias often exists only on season 1. Its native title is
+      // already authoritative: search that title just as a Japanese user would.
+      // TMDB is only needed when AniList found no localized match at all.
+      const resolved = candidates.length ? candidates.map((media) => media.originalTitle) : await lookupNames(normalized);
+      const names = [...new Set(resolved.map((name) => name.trim().slice(0, 200)))]
         .filter((name) => name && name !== normalized).slice(0, 3);
       const results = await Promise.allSettled(names.map((name) => provider.search(name)));
-      const found = new Map<number, AniListMetadata>();
+      const found = new Map(candidates.map((media) => [media.anilistId, media]));
       const matchedNames: string[] = [];
       results.forEach((result, index) => {
         if (result.status !== "fulfilled") return;
         const name = names[index]!;
-        // SEARCH_MATCH may return loosely related works. A title/alias must
-        // match the resolved name before it can appear as a fallback candidate.
-        for (const media of result.value) {
-          if ([media.title, media.originalTitle, ...media.aliases].some((title) => nameKey(title) === nameKey(name))) {
-            found.set(media.anilistId, media);
-            if (!matchedNames.includes(name)) matchedNames.push(name);
-          }
-        }
+        // For a TMDB-derived name, confirm at least one exact title/alias first.
+        // Once anchored, preserve the native query's whole result set, including
+        // sequels and specials whose titles intentionally differ from season 1.
+        const anchored = candidates.some((media) => nameKey(media.originalTitle) === nameKey(name)) ||
+          result.value.some((media) => [media.title, media.originalTitle, ...media.aliases].some((title) => nameKey(title) === nameKey(name)));
+        if (!anchored || !result.value.length) return;
+        for (const media of result.value) found.set(media.anilistId, media);
+        matchedNames.push(name);
       });
       return { query: normalized, state: "ready", candidates: [...found.values()], resolvedQueries: matchedNames,
         ...(results.some((result) => result.status === "rejected") ? { nameLookupUnavailable: true } : {}) };
     } catch {
       // The original AniList search succeeded. A secondary provider failure
       // must not be presented as an AniList outage.
-      return { query: normalized, state: "ready", candidates: [], nameLookupUnavailable: true };
+      return { query: normalized, state: "ready", candidates, nameLookupUnavailable: true };
     }
   } catch {
     return { query: normalized, state: "provider_error", candidates: [] };
