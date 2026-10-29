@@ -18,7 +18,7 @@ export function parseLibraryFolder(name: string, category: MediaType): LibraryFo
   if (!match || !match[1]?.trim()) return null;
   const id = match[4] ? Number(match[4]) : undefined;
   if (id !== undefined && (!Number.isSafeInteger(id) || id < 1 || id > 2_147_483_647)) return null;
-  if (match[3] === "anilist" && category !== "anime") return null;
+  if (match[3] === "anilist" && category === "tv") return null;
   return { name, title: match[1].trim(), year: match[2] === "—" ? 0 : Number(match[2]), category,
     ...(id === undefined ? {} : { source: match[3] as "tmdb" | "anilist", id }) };
 }

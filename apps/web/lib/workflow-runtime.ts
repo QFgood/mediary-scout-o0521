@@ -42,6 +42,7 @@ import {
   importForeignWorkAsMovie,
   assertWorkflowAgentAdapterPolicy,
   prepareMovieTarget,
+  isMovieUnreleased,
   prepareSeriesTarget,
   prepareTrackingTarget,
   queueMovieAcquisition,
@@ -852,6 +853,12 @@ export async function queueCandidateTracking(
       if (!media) return { status: "unsupported", message: "未找到该 AniList 作品。" };
       const compatibility = await getAniListAcquisitionTarget(media, accountId);
       if (!compatibility.supported) return { status: "unsupported", message: compatibility.reason };
+      if (compatibility.target.title.type === "movie") {
+        const title = compatibility.target.title;
+        if (isMovieUnreleased(title.releaseDate, new Date().toISOString(), title.anilistStatus)) return { status: "unsupported", message: "该电影尚未上映，请使用预定。" };
+        const request = await queueMovieAcquisition({ title, keyword: compatibility.target.keyword, repository: getWorkflowRepository(), accountId, connectedStorageId: workspace.id });
+        return { status: request.status, workflowRunId: request.workflowRunId, trackedSeasonId: compatibility.target.season.id };
+      }
       const request = await queueTrackingInitialization({
         ...compatibility.target, repository: getWorkflowRepository(),
         accountId, connectedStorageId: workspace.id,
@@ -1590,10 +1597,18 @@ export async function reserveCandidate(
     };
   }
   const movieTmdbId = parseMovieCandidateId(candidateId);
-  if (movieTmdbId === null) {
-    return { status: "unsupported", message: "只有电影可以预定。" };
-  }
-  const movie = await movieTargetFromTmdbId(movieTmdbId);
+  const anilistId = parseAniListCandidateId(candidateId);
+  let movie: { title: MediaTitle; keyword: string } | null = null;
+  if (anilistId !== null) {
+    try {
+      const media = await (await getAniListClient(accountId)).details(anilistId);
+      const native = media ? prepareNativeAniListTarget(media) : null;
+      if (!native?.supported || native.target.title.type !== "movie") return { status: "unsupported", message: "该 AniList 条目不是可预定的电影。" };
+      movie = native.target;
+      if (!isMovieUnreleased(movie.title.releaseDate, new Date().toISOString(), movie.title.anilistStatus)) return { status: "unsupported", message: "该电影已上映，请刷新后直接获取。" };
+    } catch { return { status: "unsupported", message: "无法读取 AniList 电影上映状态，请稍后重试。" }; }
+  } else if (movieTmdbId !== null) movie = await movieTargetFromTmdbId(movieTmdbId);
+  else return { status: "unsupported", message: "只有电影可以预定。" };
   if (!movie) {
     return { status: "unsupported", message: "无法获取该电影的信息。" };
   }
@@ -2101,6 +2116,7 @@ function seasonMetadataSync(): SeasonMetadataSync | undefined {
       if (!media) throw new Error("AniList title no longer available");
       const native = prepareNativeAniListTarget(media);
       if (!native.supported) throw new Error(native.reason);
+      if (native.target.title.type === "movie") return { latestAiredEpisode: 1, totalEpisodes: 1, title: native.target.title };
       if (native.target.season.latestAiredSource === "unknown") return null;
       return { latestAiredEpisode: native.target.season.latestAiredEpisode, totalEpisodes: native.target.season.totalEpisodes };
     }
@@ -2489,6 +2505,7 @@ async function defaultDriveIdOf(accountId: string): Promise<string | null> {
 async function getAccountStorageCredentials(
   accountId: string,
   connectedStorageId?: string | null,
+  provisionMissingDirectories = true,
 ): Promise<AccountStorageCredentials | null> {
   try {
     const storages = await getWorkflowRepository().listConnectedStorages(accountId);
@@ -2517,7 +2534,7 @@ async function getAccountStorageCredentials(
     // persisted so subsequent runs skip. Best-effort: a failure leaves the CIDs
     // null and the scoped executor still fails loud (surfaced, not silent).
     const liveMode = process.env.MEDIA_TRACK_STORAGE_ADAPTER === "115";
-    if (liveMode && drive.status === "active" && !(rootCid && moviesCid && tvCid && animeCid)) {
+    if (provisionMissingDirectories && liveMode && drive.status === "active" && !(rootCid && moviesCid && tvCid && animeCid)) {
       try {
         const p = await provisionDriveCategoryDirs(drive.provider, cookie, credential);
         ({ rootCid, moviesCid, tvCid, animeCid } = p);
@@ -3035,7 +3052,7 @@ export async function syncCurrentDriveLibrary(storageId?: string): Promise<impor
   if (running) return running;
   const operation = whileInFlight(async () => {
     if (isUpdateHoldActive(Date.now())) throw new UpdateInProgressError();
-    const creds = await getAccountStorageCredentials(scope.accountId, scope.connectedStorageId);
+    const creds = await getAccountStorageCredentials(scope.accountId, scope.connectedStorageId, false);
     if (!creds || creds.status !== "active") throw new Error("网盘未连接或登录已失效，请先重新绑定原来的网盘。");
     if (!creds.moviesCid || !creds.tvCid || !creds.animeCid) throw new Error("网盘分类目录不完整，请先在设置中重新连接。");
     const workflow = await import("@media-track/workflow");
@@ -3043,9 +3060,14 @@ export async function syncCurrentDriveLibrary(storageId?: string): Promise<impor
     const accesses = await getTmdbAccesses(settings);
     const metadata = workflow.createTmdbMetadataProvider(accesses);
     const search = workflow.createTmdbSearchProvider(accesses);
+    const persistTokens = makeTokenPersister(scope.accountId, creds.id, creds.provider);
     const executor = () => createExecutorForBrand({
       provider: creds.provider,
-      ...(getStorageBrand(creds.provider).authKind === "token" ? { credential: creds.credential ?? {}, onCredentialRefresh: makeTokenPersister(scope.accountId, creds.id, creds.provider) } : { cookie: creds.cookie }),
+      ...(getStorageBrand(creds.provider).authKind === "token" ? { credential: creds.credential ?? {}, onCredentialRefresh: async (value: unknown) => {
+        const refreshed = extractStorageCredential(creds.provider, value).credential;
+        if (refreshed) creds.credential = refreshed;
+        await persistTokens(value);
+      } } : { cookie: creds.cookie }),
       scopeCids: [creds.rootCid, creds.moviesCid, creds.tvCid, creds.animeCid].filter((id): id is string => Boolean(id)), env: process.env,
     });
     const normalize = (value: string) => value.normalize("NFKC").replace(/\s+/g, "").toLowerCase();
@@ -3060,6 +3082,7 @@ export async function syncCurrentDriveLibrary(storageId?: string): Promise<impor
           if (!media) throw new Error("AniList 作品不存在。");
           const result = prepareNativeAniListTarget(media);
           if (!result.supported) throw new Error(result.reason);
+          if ((result.target.title.type === "movie") !== (folder.category === "movie")) throw new Error("AniList 目录分类与作品类型不一致。");
           return result.target;
         }
         let id = folder.id;

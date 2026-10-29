@@ -10,7 +10,7 @@ export const anilistMediaSchema = z.object({
   synonyms: z.array(z.string()).default([]),
   description: z.string().nullable(),
   coverImage: z.object({ large: z.string().nullable() }).nullable(),
-  startDate: z.object({ year: z.number().int().nullable() }).nullable(),
+  startDate: z.object({ year: z.number().int().nullable(), month: z.number().int().nullable().optional(), day: z.number().int().nullable().optional() }).nullable(),
   seasonYear: z.number().int().nullable(),
   season: z.string().nullable(),
   episodes: z.number().int().positive().nullable(),
@@ -47,6 +47,7 @@ export function mapAniListMedia(raw: unknown): AniListMetadata | null {
     aliases: [...new Set(titles)].filter((value) => value !== title),
     mediaType: media.format === "MOVIE" ? "movie" : "anime",
     year: media.startDate?.year ?? media.seasonYear,
+    ...(media.format === "MOVIE" ? { releaseDate: aniListReleaseDate(media.startDate) } : {}),
     posterUrl: poster?.startsWith("https://") ? poster : null,
     overview: plainDescription(media.description),
     episodeCount: media.episodes, format: media.format, status: media.status,
@@ -54,4 +55,11 @@ export function mapAniListMedia(raw: unknown): AniListMetadata | null {
     ...(media.nextAiringEpisode === undefined ? {} : { nextAiringEpisode: media.nextAiringEpisode }),
     ...(media.airingSchedule ? { airingEpisodes: media.airingSchedule.nodes } : {}),
   };
+}
+
+function aniListReleaseDate(value: AniListMedia["startDate"]): string | null {
+  if (!value?.year || !value.month || !value.day) return null;
+  const text = `${value.year}-${String(value.month).padStart(2, "0")}-${String(value.day).padStart(2, "0")}`;
+  const date = new Date(`${text}T00:00:00Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === text ? text : null;
 }

@@ -89,7 +89,7 @@ describe("drive library recovery", () => {
   it("parses source-specific identity and legacy names without guessing IDs", () => {
     expect(parseLibraryFolder("作品 (2026) {anilist-30}", "anime")).toMatchObject({ source: "anilist", id: 30 });
     expect(parseLibraryFolder("作品 (2026)", "tv")).not.toHaveProperty("id");
-    expect(parseLibraryFolder("作品 (2026) {anilist-30}", "movie")).toBeNull();
+    expect(parseLibraryFolder("作品 (2026) {anilist-30}", "tv")).toBeNull();
     expect(parseLibraryFolder("作品 (2026) {tmdb-0}", "tv")).toBeNull();
   });
 });

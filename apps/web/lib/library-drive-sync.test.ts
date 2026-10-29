@@ -35,12 +35,27 @@ describe("library sync runtime boundaries", () => {
     await expect(rt.syncCurrentDriveLibrary("foreign")).rejects.toThrow();
     expect(mocks.executor).not.toHaveBeenCalled();
   });
+  it("does not provision or create missing category directories during a read-only sync", async () => {
+    await rt.getWorkflowRepository().upsertConnectedStorage({ id: "empty-drive", accountId: "acct_default", provider: "quark", providerUid: "empty-user", label: null, payload: { cookie: "dummy" }, rootCid: null, moviesCid: null, tvCid: null, animeCid: null, createdAt: "2026-01-01T00:00:00Z" });
+    await expect(rt.syncCurrentDriveLibrary("empty-drive")).rejects.toThrow("分类目录不完整");
+    expect(mocks.executor).not.toHaveBeenCalled();
+  });
   it("restores records on the selected drive using that drive's scoped credentials", async () => {
     await bind();
     expect(await rt.syncCurrentDriveLibrary("drive-a")).toMatchObject({ imported: 1, episodes: 1, issues: [] });
     expect(mocks.executor).toHaveBeenCalledWith(expect.objectContaining({ provider: "quark", cookie: "dummy", scopeCids: ["root", "movies", "tv", "anime"] }));
     expect(await rt.getWorkflowRepository().listTrackedSeasonStates({ accountId: "acct_default", connectedStorageId: "drive-a" })).toHaveLength(1);
     expect(await rt.syncCurrentDriveLibrary("drive-a")).toMatchObject({ imported: 0, existing: 1 });
+  });
+  it("uses refreshed token credentials on subsequent directory reads", async () => {
+    await rt.getWorkflowRepository().upsertConnectedStorage({ id: "token-drive", accountId: "acct_default", provider: "guangya", providerUid: "token-user", label: null, payload: { accessToken: "old-access", refreshToken: "old-refresh" }, rootCid: "root", moviesCid: "movies", tvCid: "tv", animeCid: "anime", createdAt: "2026-01-01T00:00:00Z" });
+    mocks.children.mockImplementationOnce(async () => {
+      const config = mocks.executor.mock.calls[0]![0] as { onCredentialRefresh(value: unknown): Promise<void> };
+      await config.onCredentialRefresh({ accessToken: "new-access", refreshToken: "new-refresh" });
+      return [];
+    });
+    await rt.syncCurrentDriveLibrary("token-drive");
+    expect(mocks.executor.mock.calls[1]![0]).toMatchObject({ credential: { accessToken: "new-access", refreshToken: "new-refresh" } });
   });
   it("accepts only unique exact title/year matches for legacy directories", async () => {
     await bind(); mocks.children.mockImplementation(async (id) => id === "movies" ? [{ id: "film", name: "Film (2025)" }] : []);
