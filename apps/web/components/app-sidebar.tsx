@@ -33,7 +33,7 @@ export function AppSidebar({
         </span>
         <span className="brand-copy">
           <strong>巡影 · Mediary Scout</strong>
-          <span>多网盘媒体 agent</span>
+          <span>多网盘媒体 agent · 多元数据优化版</span>
         </span>
       </div>
 
