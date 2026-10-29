@@ -21,6 +21,8 @@
 
 This fork of [Mediary Scout](https://github.com/fancydirty/mediary-scout) focuses on **TMDB / AniList metadata, anime acquisition, cloud-drive library recovery and per-service proxy selection**. This fork maintains the Docker self-hosted edition only, for NAS devices, routers and servers, with a browser interface.
 
+**Maintenance policy: independently maintained; upstream changes will no longer be synchronized or merged as a release policy.** Features, fixes and deployment instructions follow this repository. Upstream attribution and the open-source license are retained.
+
 Search for a title and request acquisition or reserve an upcoming movie. The agent searches for resources, selects candidates, transfers them to your connected drive and verifies arrival. Scheduled patrols track missing aired episodes. Availability depends on the resource providers, model and drive services.
 
 ## Current features
