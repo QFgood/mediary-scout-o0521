@@ -24,24 +24,9 @@
 
 本 Fork 新增 **TMDB / AniList 双元数据搜索**及 AniList 动漫榜单。AniList 电视动画可直接提交独立获取任务，无需 TMDB 季度映射；支持条目详情、媒体库状态与自动追更，详见[开发说明与配置](docs/anilist-development.md)。
 
-点击前往下载：[GitHub Releases](https://github.com/fancydirty/mediary-scout/releases/latest)（macOS / Windows 桌面版）
-
-点击前往赏饭：[要饭嘛，不寒碜](docs/support/README.md)
-
-交流：本项目积极参与并认可 [LINUX DO 社区](https://linux.do)，许多用户在那里自部署、交流网盘经验，部署问题也能很快得到回应。 [![认可 LINUX DO](https://img.shields.io/badge/LINUX%20DO-认可-2ecc71?style=flat&labelColor=1f1f1f)](https://linux.do)
-
 ![巡影：搜片 → 点获取 → agent 自动搜索、转存、验证落进你的网盘](docs/images/demo.gif)
 
 ## 安装
-
-### 桌面版（最省事）
-
-| 平台 | 下载 | 说明 |
-|---|---|---|
-| macOS（Apple 芯片） | [.dmg](https://github.com/fancydirty/mediary-scout/releases/latest) | 已签名公证，直接打开 |
-| Windows（x64） | [.exe](https://github.com/fancydirty/mediary-scout/releases/latest) | 未签名，SmartScreen 弹窗时点「仍要运行」 |
-
-安装后打开 → 在设置里连网盘、填 AI 模型 → 搜片点「获取」。有新版本时应用会提示你下载。
 
 ### Docker（NAS / 软路由 / 服务器）
 
