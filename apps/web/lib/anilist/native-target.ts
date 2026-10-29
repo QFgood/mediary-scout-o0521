@@ -13,8 +13,9 @@ export function prepareNativeAniListTarget(media: AniListMetadata, now = Date.no
   if (!Number.isSafeInteger(media.anilistId) || media.anilistId <= 0 || media.anilistId > 2_147_483_647 || !media.title.trim()) {
     return { supported: false, reason: "AniList 作品标识或标题无效。" };
   }
-  const count = media.format === "MOVIE" ? 1 : media.episodeCount;
-  if (!count || !Number.isSafeInteger(count) || count > 2000) {
+  const pendingCount = media.status === "NOT_YET_RELEASED" && media.episodeCount === null;
+  const count = media.format === "MOVIE" ? 1 : pendingCount ? 0 : media.episodeCount;
+  if (count === null || (!count && !pendingCount) || !Number.isSafeInteger(count) || count < 0 || count > 2000) {
     return { supported: false, reason: "AniList 尚未提供有效的条目总集数，暂无法确定获取范围。" };
   }
   if (media.status === "CANCELLED") return { supported: false, reason: "该动画已取消播出，暂不提交获取。" };
@@ -39,7 +40,7 @@ export function prepareNativeAniListTarget(media: AniListMetadata, now = Date.no
   return { supported: true, target: {
     title: {
       id, source: "anilist", anilistId: media.anilistId, tmdbId: null, type: "anime",
-      episodeNumbering: "entry_relative", title: media.title, originalTitle: media.originalTitle,
+      anilistStatus: media.status ?? "UNKNOWN", episodeNumbering: "entry_relative", title: media.title, originalTitle: media.originalTitle,
       aliases: media.aliases, year: media.year ?? 0, originCountries: ["JP"],
       posterPath: media.posterUrl, backdropPath: null, overview: media.overview,
     },

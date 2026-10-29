@@ -1,3 +1,4 @@
+import { MetadataHealthPanel } from "./metadata-health";
 import { Suspense } from "react";
 import Link from "next/link";
 import { Activity, Aperture, Bell, Library, Settings } from "lucide-react";
@@ -101,6 +102,7 @@ export function AppSidebar({
       </nav>
 
       <div className="sidebar-footer">
+        <MetadataHealthPanel />
         {/* Account identity (multi-user only) — who am I + 改密码/登出/账号管理. In
             Suspense so its DB read never blocks the shell. */}
         <Suspense fallback={null}>

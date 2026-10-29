@@ -57,7 +57,7 @@ async function AniListDetail({ params, searchParams }: {
   const active = valid ? (await repository.listActiveWorkflowRuns(scope)).find((run) => run.title.id === `anilist_anime_${id}`) : null;
   const status = tracked ? await getTrackedSeasonStatusView({ repository, trackedSeasonId: tracked.season.id, scope }) : null;
   const movie = target?.title.type === "movie";
-  const unreleased = movie && isMovieUnreleased(target?.title.releaseDate, new Date().toISOString(), target?.title.anilistStatus);
+  const unreleased = target?.title.anilistStatus === "NOT_YET_RELEASED" || movie && isMovieUnreleased(target?.title.releaseDate, new Date().toISOString(), target?.title.anilistStatus);
   const poster = mediaPosterUrl(target?.title.posterPath);
   return (
     <div className="app-shell">
@@ -73,7 +73,7 @@ async function AniListDetail({ params, searchParams }: {
             ) : <span className="poster-fallback">{target.title.title.slice(0, 4)}</span>}</div>
             <div className="hub-title-block">
               <h1>{target.title.title}</h1>
-              <p className="hub-attributes">AniList · {target.title.year || "年份未定"} · {movie ? "电影" : `共 ${target.season.totalEpisodes} 集`}</p>
+              <p className="hub-attributes">AniList · {target.title.year || "年份未定"} · {movie ? "电影" : (target.season.totalEpisodes ? `共 ${target.season.totalEpisodes} 集` : "集数未定")}</p>
               <p className="panel-note">{movie ? "未上映电影支持预定，上映后由巡检自动尝试获取。" : "按该独立动画条目的相对集号获取与追更。"}</p>
               <div className="hub-actions">
                 {active ? <AcquireProgressBadge tmdbId={null} anilistId={id} storageId={workspace.activeStorageId} />

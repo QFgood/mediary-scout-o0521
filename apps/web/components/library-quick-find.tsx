@@ -334,6 +334,7 @@ function PosterCard({ entry, activeStorageId }: { entry: LibraryWallEntry; activ
             ? entry.state === "reserved"
               ? `预定 · ${formatReleaseDate(entry.releaseDate)}上映`
               : entry.year
+            : entry.state === "reserved" ? `${entry.year || "年份未定"} · AniList · 已预定，等待开播`
             : `${entry.year} · ${entry.anilistId && entry.tmdbId === null ? "AniList" : `${entry.seasonCount} 季`} · ${entry.obtainedEpisodes}/${entry.totalAiredEpisodes}/${entry.totalEpisodes} 集`}
         </span>
       </span>

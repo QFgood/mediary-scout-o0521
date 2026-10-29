@@ -49,7 +49,7 @@ describe("native AniList movies", () => {
   });
   it("rechecks movie type and supports released movies through the movie queue", async () => {
     mocks.details.mockResolvedValueOnce({ ...movie, format: "TV", mediaType: "anime", episodeCount: 12 });
-    expect((await runtime.reserveCandidate("anilist_anime_900")).status).toBe("unsupported");
+    expect((await runtime.reserveCandidate("anilist_anime_900")).status).toBe("reserved");
     mocks.details.mockResolvedValue({ ...movie, status: "FINISHED" });
     expect((await runtime.queueCandidateTracking("anilist_anime_900")).status).toBe("queued");
     const run = await runtime.getWorkflowRepository().claimNextQueuedWorkflowRun({ kind: "movie_init", now: new Date().toISOString() });

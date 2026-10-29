@@ -1,3 +1,4 @@
+import { SearchLoadBoundary, SearchLoadBadge, SearchLoadComplete } from "../components/search-load-status";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Library, TriangleAlert } from "lucide-react";
@@ -110,11 +111,11 @@ async function HomeSurface({
 
       <main className="main product-main">
         {activeTab === "search" ? (
-          <section className="search-surface">
+          <SearchLoadBoundary key={`${source}-${query}-${anilistId}-${animeFeed}-${activeTrending}`}><section className="search-surface">
             <RememberQuery query={query} basePath={basePath} source={source} anilistId={anilistId} />
             <div className="search-hero">
               <div>
-                <h1>搜索</h1>
+                <div className="search-title-status"><h1>搜索</h1><SearchLoadBadge /></div>
                 <p>找到目标后发起获取，后台会处理资源判断、转存和验证。</p>
               </div>
               <SearchForm basePath={basePath} defaultQuery={query} source={source} />
@@ -133,8 +134,9 @@ async function HomeSurface({
                 basePath={basePath}
                 animeFeed={animeFeed}
               />}
+              <SearchLoadComplete />
             </Suspense>
-          </section>
+          </section></SearchLoadBoundary>
         ) : (
           <>
             <DemoSessionLibrary />
@@ -201,12 +203,13 @@ async function SearchResults({
         // a GFW-blocked network without a proxy (issue #134). Degrade with
         // actionable guidance instead of letting the server component 500.
         <section className="search-results" aria-label="搜索结果">
+          <SearchLoadComplete failed />
           <div className="quiet-state compact" role="alert">
             <TriangleAlert size={22} aria-hidden />
             <strong>搜索暂时不可用：连不上元数据服务（TMDB）</strong>
             <span>
               当前部署环境连不上 TMDB，内置代理也不通。国内网络未配置代理时常见——
-              给部署主机（或容器）配置可访问外网的代理后重试。
+              可在设置的 SOCKS5 服务代理中选择 TMDB，再测试连接并重试。
             </span>
             {/* Deliberately a full-reload <a>, not <Link>: retry must re-run the
                 server render (re-probe TMDB). A client-side navigation to the

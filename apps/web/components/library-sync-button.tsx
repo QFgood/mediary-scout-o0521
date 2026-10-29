@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { RefreshCw } from "lucide-react";
-import { syncDriveLibraryAction } from "../app/actions";
+import { syncDriveLibraryAction, retryLibraryFailuresAction } from "../app/actions";
 import { useRouter } from "../lib/use-router";
 import { runAction } from "../lib/run-action";
 import type { LibrarySyncReport } from "@media-track/workflow";
@@ -13,6 +13,13 @@ export function LibrarySyncButton({ storageId }: { storageId?: string | undefine
   const router = useRouter();
   return <div className="library-sync-controls">
     <div className="library-sync-action">
+      <button type="button" className="secondary-button" disabled={pending} onClick={() => startTransition(async () => {
+        setReport(null); setMessage("正在重试当前网盘的失败任务……");
+        const result = await runAction(() => retryLibraryFailuresAction(storageId), setMessage);
+        if (!result.ok) return;
+        setMessage(`已重试 ${result.value.retried} 个失败任务，跳过 ${result.value.skipped} 项。正在运行、已完成和未播出任务不会重复提交。`);
+        router.refresh();
+      })}><RefreshCw size={14} aria-hidden />一键重试</button>
       <button type="button" className="secondary-button" disabled={pending} onClick={() => startTransition(async () => {
         setReport(null); setMessage("正在扫描当前网盘已有资源，请保持页面打开……");
         const result = await runAction(() => syncDriveLibraryAction(storageId), setMessage);

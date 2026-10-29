@@ -498,7 +498,7 @@ export async function getLibraryWall(storageId?: string): Promise<LibraryWallEnt
     }
     // An unreleased movie is 预定 (reserved), not 有缺集 — its anchor reads aired=1
     // but it simply hasn't come out yet.
-    const unreleased = title.type === "movie" && isMovieUnreleased(title.releaseDate, now, title.anilistStatus);
+    const unreleased = title.anilistStatus === "NOT_YET_RELEASED" || title.type === "movie" && isMovieUnreleased(title.releaseDate, now, title.anilistStatus);
     entries.push({
       tmdbId,
       ...(title.anilistId === undefined ? {} : { anilistId: title.anilistId }),
