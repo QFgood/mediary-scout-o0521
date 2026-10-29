@@ -30,11 +30,9 @@
 | 双元数据搜索 | 可切换 TMDB 与 AniList；AniList 提供当季、热门和待播动漫榜单。 |
 | AniList 原生任务 | 电视动画无需 TMDB 季度映射即可获取、查看详情、加入媒体库和自动追更；动画电影支持获取与未上映预定。 |
 | 中文名称辅助搜索 | 中文输入在 AniList 无结果时，通过 TMDB 查询作品原名后再搜 AniList；日文、英文和罗马字直接搜索。简称能否命中取决于元数据收录情况。 |
-| 网盘媒体库恢复 | 从当前绑定网盘的原 Movies / TV / Anime 目录恢复缺失的作品、季度和入库集号，无法确认的内容列入报告。详见[恢复说明](docs/library-drive-sync.md)。 |
+| 网盘媒体库恢复 | 从当前绑定网盘的原 Movies / TV / Anime 目录恢复记录并复核入库集号，支持季度目录中的 `001.mkv` 等命名；确认缺少的已播集自动提交补集，无法确认的内容列入报告并暂缓补集。详见[恢复说明](docs/library-drive-sync.md)。 |
 | 按服务选择 SOCKS5 | 可选择仅为 AniList、TMDB、PanSou、assrt.net、Jev 启用代理，并测试代理入口及目标连接；其他服务沿用原连接方式。 |
 | 可配置资源与模型 | 配置 OpenAI 兼容模型、PanSou、可选 Prowlarr、字幕来源及 Jev 候选预筛，保留获取活动与通知。 |
-
-网盘同步的**已有记录复核、`001.mkv` 纯数字集号识别及同步后自动补集**增强已提交至 [PR #14](https://github.com/QFgood/mediary-scout-o0521/pull/14)，合并后可用。
 
 ## Docker 部署
 

@@ -30,11 +30,9 @@ Search for a title and request acquisition or reserve an upcoming movie. The age
 | Dual metadata search | Switch between TMDB and AniList; AniList offers seasonal, trending and upcoming anime feeds. |
 | Native AniList tasks | Acquire, view and track TV anime without a TMDB season mapping. Anime movies support acquisition and advance reservations. |
 | Chinese title assistance | If a Chinese query returns no AniList results, look up original titles through TMDB and search AniList again. Japanese, English and romanized names use direct search. Abbreviation coverage depends on the metadata catalogs. |
-| Drive library recovery | Restore missing titles, seasons and obtained episode marks from the connected drive's original Movies / TV / Anime directories; report uncertain matches. See the [recovery guide](docs/library-drive-sync.md). |
+| Drive library recovery | Restore and reconcile records from the connected drive's original Movies / TV / Anime directories, including numeric names such as `001.mkv` in season directories. Queue confirmed missing aired episodes automatically; report uncertain files and defer acquisition for those cases. See the [recovery guide](docs/library-drive-sync.md). |
 | Per-service SOCKS5 | Optionally proxy AniList, TMDB, PanSou, assrt.net and Jev, with entry and destination connection tests. Other services retain their existing connections. |
 | Configurable providers | Configure an OpenAI-compatible model, PanSou, optional Prowlarr, subtitles and Jev candidate screening, with acquisition activity and notifications. |
-
-Enhanced drive synchronization with **existing-record reconciliation, numeric names such as `001.mkv`, and automatic acquisition of confirmed missing aired episodes** is proposed in [PR #14](https://github.com/QFgood/mediary-scout-o0521/pull/14) and becomes available after merge.
 
 ## Docker deployment
 
