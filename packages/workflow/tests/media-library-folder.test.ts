@@ -1,9 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   ensureMediaLibraryDirectory,
   legacyMediaLibraryFolderName,
   mediaLibraryFolderName,
 } from "../src/media-library-folder.js";
+import { canonicalEpisodeFileName, episodeCodeFromFileName } from "../src/episode-code.js";
+import { ensureSeasonAcquisitionDirectories } from "../src/acquisition-v2/directory-lifecycle.js";
+import { parseLibraryFolder } from "../src/library-drive-sync.js";
 import { FakeStorageExecutor } from "../src/fakes.js";
 
 describe("mediaLibraryFolderName", () => {
@@ -68,5 +71,49 @@ describe("ensureMediaLibraryDirectory", () => {
       tmdbId: 99,
     });
     expect(id).toBe(preferredId);
+  });
+});
+
+describe("cloud title punctuation compatibility", () => {
+  const title = "サイバーパンク: エッジランナーズ2";
+  const input = { title, year: 2026, tmdbId: null, anilistId: 195539 };
+  const safeName = "サイバーパンク： エッジランナーズ2 (2026) {anilist-195539}";
+  it("escapes storage names while retaining the native title and source ID", () => {
+    expect(mediaLibraryFolderName(input)).toBe(safeName);
+    expect(input.title).toBe(title);
+    expect(parseLibraryFolder(safeName, "anime")).toMatchObject({ source: "anilist", id: 195539 });
+    const file = canonicalEpisodeFileName({ title, episodeCode: "S01E01", sourceName: "001.mkv" });
+    expect(file).toBe("サイバーパンク： エッジランナーズ2.S01E01.mkv");
+    expect(episodeCodeFromFileName(file)).toBe("S01E01");
+  });
+  it("handles other forbidden punctuation and control characters without changing valid Unicode", () => {
+    const name = mediaLibraryFolderName({ title: ' A/B\\C:D*E?F"G<H>I|J\n ', year: 2026, tmdbId: 1 });
+    expect(name).toBe("A／B＼C：D＊E？F＂G＜H＞I｜J (2026) {tmdb-1}");
+    expect(mediaLibraryFolderName({ title: "普通の作品・第二期", year: 2026, tmdbId: 1 })).toBe("普通の作品・第二期 (2026) {tmdb-1}");
+  });
+  it("creates safe root/season/staging directories on a rejecting drive, and reuses them", async () => {
+    const executor = new FakeStorageExecutor();
+    const create = executor.createDirectory.bind(executor);
+    const writes = vi.spyOn(executor, "createDirectory").mockImplementation(async (value) => {
+      if (/[:/\\*?"<>|]/.test(value.name)) throw new Error("QUARK_CREATE_FOLDER_FAILED: code=14012 bad file name");
+      return create(value);
+    });
+    const result = await ensureSeasonAcquisitionDirectories({ executor, categoryParentId: "anime", showName: title, year: 2026,
+      tmdbId: null, anilistId: 195539, seasons: [1], workflowRunId: "test" });
+    expect((await executor.listChildDirectories("anime"))[0]?.name).toBe(safeName);
+    expect(await ensureMediaLibraryDirectory({ ...input, executor, parentId: "anime" })).toBe(result.showDirectoryId);
+    expect(writes.mock.calls.filter(([value]) => value.parentId === "anime")).toHaveLength(1);
+  });
+  it("reuses old raw tagged directories accepted by other providers", async () => {
+    const executor = new FakeStorageExecutor();
+    const id = await executor.createDirectory({ name: `${title} (2026) {anilist-195539}`, parentId: "anime" });
+    expect(await ensureMediaLibraryDirectory({ ...input, executor, parentId: "anime" })).toBe(id);
+    expect(await executor.listChildDirectories("anime")).toHaveLength(1);
+  });
+  it("still reuses legacy TMDB directories but never adopts an untagged AniList folder", async () => {
+    const executor = new FakeStorageExecutor();
+    const id = await executor.createDirectory({ name: `${title} (2026)`, parentId: "anime" });
+    expect(await ensureMediaLibraryDirectory({ ...input, tmdbId: 10, executor, parentId: "anime" })).toBe(id);
+    expect(await ensureMediaLibraryDirectory({ ...input, executor, parentId: "anime" })).not.toBe(id);
   });
 });

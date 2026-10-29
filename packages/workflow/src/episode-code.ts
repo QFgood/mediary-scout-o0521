@@ -1,3 +1,5 @@
+import { storageTitleName } from "./storage-name.js";
+
 /**
  * The episode-identity contract between storage listings and workflow state:
  * a file is "visible" as an episode exactly when its FILE NAME alone exposes
@@ -31,5 +33,5 @@ export function canonicalEpisodeFileName(input: {
 }): string {
   const extensionMatch = /\.[A-Za-z0-9]+$/.exec(input.sourceName);
   const extension = extensionMatch?.[0] ?? "";
-  return `${input.title}.${input.episodeCode}${extension}`;
+  return `${storageTitleName(input.title)}.${input.episodeCode}${extension}`;
 }

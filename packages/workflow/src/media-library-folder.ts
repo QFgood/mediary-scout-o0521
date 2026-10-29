@@ -1,4 +1,5 @@
 import type { StorageExecutor } from "./ports.js";
+import { storageTitleName } from "./storage-name.js";
 
 function folderYear(year: number | string | null | undefined): string {
   if (year === null || year === undefined || year === "" || year === 0 || year === "0") {
@@ -8,7 +9,7 @@ function folderYear(year: number | string | null | undefined): string {
 }
 
 /** Canonical cloud folder name for a title root under Movies/TV/Anime. */
-export function mediaLibraryFolderName(input: {
+function rawMediaLibraryFolderName(input: {
   title: string;
   year: number | string | null | undefined;
   tmdbId: number | null;
@@ -19,6 +20,10 @@ export function mediaLibraryFolderName(input: {
     return `${input.title} (${folderYear(input.year)}) {anilist-${input.anilistId}}`;
   }
   return `${input.title} (${folderYear(input.year)}) {tmdb-${input.tmdbId}}`;
+}
+
+export function mediaLibraryFolderName(input: Parameters<typeof rawMediaLibraryFolderName>[0]): string {
+  return rawMediaLibraryFolderName({ ...input, title: storageTitleName(input.title) });
 }
 
 /** The `{tmdb-N}` suffix of a new-style folder, or null for a legacy name. */
@@ -57,12 +62,18 @@ export async function ensureMediaLibraryDirectory(input: {
     ...(input.anilistId === undefined ? {} : { anilistId: input.anilistId }),
   });
   const legacy = legacyMediaLibraryFolderName({ title: input.title, year: input.year });
+  const rawPreferred = rawMediaLibraryFolderName(input);
+  const safeLegacy = legacyMediaLibraryFolderName({ title: storageTitleName(input.title), year: input.year });
 
   const children = await input.executor.listChildDirectories(input.parentId);
   const hitPreferred = children.find((child) => child.name === preferred);
   if (hitPreferred) return hitPreferred.id;
+  // Other drives may already have accepted the original punctuation. Reuse
+  // those exact old names rather than creating a second library directory.
+  const hitRaw = children.find((child) => child.name === rawPreferred);
+  if (hitRaw) return hitRaw.id;
   // A native entry must not adopt an untagged series folder: it may contain other seasons.
-  const hitLegacy = input.tmdbId === null ? undefined : children.find((child) => child.name === legacy);
+  const hitLegacy = input.tmdbId === null ? undefined : children.find((child) => child.name === legacy || child.name === safeLegacy);
   if (hitLegacy) return hitLegacy.id;
 
   return input.executor.createDirectory({ name: preferred, parentId: input.parentId });
