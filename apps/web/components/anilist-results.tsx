@@ -34,6 +34,8 @@ export async function AniListResults({ query, selectedId, basePath, storageId, a
     <section className="search-results" aria-label="AniList 搜索结果">
       <div className="section-heading"><div><h2>结果</h2><p>{view.candidates.length} 个候选 · 来自 AniList</p></div></div>
       <p className="panel-note">每个条目代表 AniList 收录的独立作品或续作；播出季度不等于「第几季」。</p>
+      {Boolean(view.resolvedQueries?.length) && <p className="panel-note">已通过 TMDB 查询原名并搜索 AniList：{view.resolvedQueries!.join("、")}</p>}
+      {view.nameLookupUnavailable && <p className="panel-note">中文名称辅助查询暂未完成，可重试或直接输入日文、英文或罗马字名称。</p>}
       {view.candidates.length ? (
         <div className="candidate-grid">{view.candidates.map((media) => <AniListCandidateCard key={`anilist:${media.anilistId}`} media={media} storageId={storageId} />)}</div>
       ) : <div className="quiet-state compact"><strong>没有匹配结果</strong><span>可尝试作品的日文、英文或罗马字名称。</span></div>}
