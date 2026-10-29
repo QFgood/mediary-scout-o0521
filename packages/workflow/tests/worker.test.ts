@@ -46,6 +46,20 @@ function throwingModel() {
 }
 
 describe("runQueuedType2Workflow (V2 engine)", () => {
+  it("keeps synchronized obtained marks when a refill is claimed, without reacquiring present episodes", async () => {
+    const repository = new InMemoryWorkflowRepository();
+    const { title, season } = trackedFixture();
+    await queueTrackingInitialization({ title, season, keyword: "Show", repository, createWorkflowRunId: () => "refill", now: fixedNow });
+    const snapshot = (await repository.getWorkflowRunSnapshot("refill"))!;
+    snapshot.episodes[0]!.obtained = true;
+    snapshot.episodes[0]!.verifiedFileIds = ["existing-001"];
+    await repository.saveWorkflowRunSnapshot(snapshot);
+    const generate = vi.fn(async () => { throw new Error("existing episodes must not trigger an agent call"); });
+    await runQueuedType2Workflow({ repository, resourceProvider: emptyProvider(), storage: new FakeStorageExecutor(),
+      model: new MockLanguageModelV3({ doGenerate: generate }), storageParentDirectoryId: "root", now: fixedNow });
+    expect(generate).not.toHaveBeenCalled();
+    expect((await repository.getWorkflowRunSnapshot("refill"))?.episodes.find((e) => e.episodeCode === "S01E01")?.obtained).toBe(true);
+  });
   it("carries the claimed account's assrt transport through the TV workflow to the subtitle search", async () => {
     const repository = new InMemoryWorkflowRepository();
     const { title, season } = trackedFixture();

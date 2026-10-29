@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, type JSX, type KeyboardEvent } from "react";
+import { useRef, useState, type JSX, type KeyboardEvent, type ReactNode } from "react";
 import { CalendarClock, CheckCircle2, Clock3, LoaderCircle, Search, TriangleAlert, X } from "lucide-react";
 // Client components must take the /scope subpath, not the barrel — the barrel
 // drags pg/postgres into the client bundle (see request-state.tsx).
@@ -31,6 +31,7 @@ export function LibraryQuickFind({
   mode,
   mediaType,
   filter,
+  syncControl,
 }: {
   wallEntries: LibraryWallEntry[];
   inProgressTitles: InProgressTitle[];
@@ -39,6 +40,7 @@ export function LibraryQuickFind({
   mode: "home" | "category";
   mediaType?: "movie" | "tv" | "anime" | undefined;
   filter?: "all" | "complete" | "tracking" | "partial" | undefined;
+  syncControl?: ReactNode;
 }): JSX.Element {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -98,18 +100,12 @@ export function LibraryQuickFind({
 
   return (
     <>
+      <div className="library-sync-heading">
+        <h1>{mode === "home" ? "我的媒体库" : <><Link href={`${workspaceBasePath(storageId)}?tab=library`} aria-label="返回媒体库">‹</Link> {typeLabel}</>}</h1>
+        {syncControl}
+      </div>
       <div className="section-heading library-heading library-find-heading">
         <div>
-          {mode === "home" ? (
-            <h1>我的媒体库</h1>
-          ) : (
-            <h1>
-              <Link href={`${workspaceBasePath(storageId)}?tab=library`} style={{ marginRight: 12, opacity: 0.6 }}>
-                ‹
-              </Link>
-              {typeLabel}
-            </h1>
-          )}
           {mode === "category" ? <p>{trackingCount > 0 && `${trackingCount} 部正在追踪`}</p> : null}
         </div>
         <div className="search-box search-box-compact">

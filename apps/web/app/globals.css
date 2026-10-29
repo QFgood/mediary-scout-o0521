@@ -630,6 +630,19 @@ p {
 
 /* ---------- library ---------- */
 
+.library-sync-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 16px;
+}
+.library-sync-heading h1 { margin: 0; font-size: 28px; }
+.library-sync-controls { display: contents; }
+.library-sync-action { justify-self: end; }
+.library-sync-description, .library-sync-report { grid-column: 1 / -1; margin: 0; }
+.library-sync-description { color: var(--text-muted); font-size: 12px; line-height: 1.6; opacity: 0.75; }
+
 .library-heading {
   margin-bottom: 20px;
 }

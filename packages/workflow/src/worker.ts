@@ -486,6 +486,7 @@ export async function runQueuedType2Workflow(input: {
     const result = await runType2InitializationV2AndPersist({
       title: claimed.title,
       season: claimed.season,
+      priorObtained: claimed.episodes.filter((episode) => episode.obtained).map((episode) => episode.episodeCode),
       categoryParentId: requireCategoryParent(
         storageParentForTitle(
           claimed.title,
