@@ -3868,6 +3868,7 @@ select.setting-control {
   row-gap: 8px;
 }
 .support-author-trigger {
+  text-decoration: none;
   appearance: none;
   background: none;
   border: 0;
