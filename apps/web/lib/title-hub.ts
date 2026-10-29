@@ -314,7 +314,7 @@ export async function getDetailView(
       (snapshot) => snapshot.title.tmdbId === tmdbId && isUserVisibleWorkflowKind(snapshot.workflowRun.kind),
     );
     const obtained = movieState.episodes.some((episode) => episode.obtained);
-    const reserved = isMovieUnreleased(movieState.title.releaseDate, now);
+    const reserved = isMovieUnreleased(movieState.title.releaseDate, now, movieState.title.anilistStatus);
     const state = acquiring ? "acquiring" : reserved ? "reserved" : obtained ? "acquired" : "missing";
     return movieHubViewFromTitle(movieState.title, state, acquiring, obtained);
   }
@@ -498,7 +498,7 @@ export async function getLibraryWall(storageId?: string): Promise<LibraryWallEnt
     }
     // An unreleased movie is 预定 (reserved), not 有缺集 — its anchor reads aired=1
     // but it simply hasn't come out yet.
-    const unreleased = title.type === "movie" && isMovieUnreleased(title.releaseDate, now);
+    const unreleased = title.type === "movie" && isMovieUnreleased(title.releaseDate, now, title.anilistStatus);
     entries.push({
       tmdbId,
       ...(title.anilistId === undefined ? {} : { anilistId: title.anilistId }),

@@ -153,7 +153,7 @@ export type SeasonMetadataSync = (input: {
   anilistId?: number;
   accountId?: string;
   seasonNumber: number;
-}) => Promise<{ latestAiredEpisode: number; totalEpisodes: number } | null>;
+}) => Promise<{ latestAiredEpisode: number; totalEpisodes: number; title?: MediaTitle } | null>;
 
 /**
  * §7: per-account worker context. After a run is claimed, the worker resolves the
@@ -728,7 +728,8 @@ async function patrolTrackedState(args: {
   state: Awaited<ReturnType<WorkflowRepository["listAllTrackedSeasonStates"]>>[number];
   now: () => string;
 }): Promise<ScheduledType3Outcome | null> {
-  const { input, state, now } = args;
+  const { input, now } = args;
+  let state = args.state;
   {
     const deps = await resolveWorkerDeps(
       input.resolveAccountContext,
@@ -740,6 +741,13 @@ async function patrolTrackedState(args: {
     // TV/anime agent (different semantics). (未上映/reserved films aren't tracked
     // yet; the air-time gate lands with that product state.)
     if (state.title.type === "movie") {
+      if (state.title.source === "anilist" && !state.episodes.some((episode) => episode.obtained) && input.syncSeasonMetadata) {
+        try {
+          const meta = await input.syncSeasonMetadata({ tmdbId: null, anilistId: state.title.anilistId!, accountId: state.accountId, seasonNumber: 1 });
+          if (!meta?.title || meta.title.type !== "movie" || meta.title.id !== state.title.id) return null;
+          state = { ...state, title: meta.title };
+        } catch { return null; } // Unknown/currently unavailable release state must not start a paid run.
+      }
       return (await patrolMovie({ input, deps, state, now })) ?? null;
     }
 
@@ -988,7 +996,7 @@ async function patrolMovie(args: {
   // Air-time gate: a reserved (未上映) film whose release date is still in the
   // future stays reserved — the agent must NOT run before release. Once the date
   // arrives this gate opens and the patrol collects it (点预定 → 上映后自然收).
-  if (isMovieUnreleased(state.title.releaseDate, now())) {
+  if (isMovieUnreleased(state.title.releaseDate, now(), state.title.anilistStatus)) {
     return null;
   }
 

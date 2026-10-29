@@ -79,6 +79,8 @@ export interface MediaTitle {
    *  an unreleased film (date in the future) is reserved, not acquired, until it
    *  releases. Absent/null for TV and for movies TMDB has no date for. */
   releaseDate?: string | null;
+  /** Native AniList movie release state; a year-only date must never be guessed. */
+  anilistStatus?: string;
   /** Scraped artwork/metadata — durable product state, read straight from the DB. */
   posterPath?: string | null;
   backdropPath?: string | null;
@@ -407,7 +409,9 @@ export function episodePartsFromCode(code: string): { seasonNumber: number; epis
  * no_coverage retry already covers 已上映无源). Compared by calendar date
  * (YYYY-MM-DD lexicographic), so the day it releases it counts as released.
  */
-export function isMovieUnreleased(releaseDate: string | null | undefined, now: string): boolean {
+export function isMovieUnreleased(releaseDate: string | null | undefined, now: string, anilistStatus?: string): boolean {
+  if (anilistStatus === "NOT_YET_RELEASED") return true;
+  if (anilistStatus === "FINISHED" || anilistStatus === "RELEASING") return false;
   if (!releaseDate) {
     return false;
   }

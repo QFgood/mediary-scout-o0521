@@ -5,7 +5,7 @@ import { DEFAULT_ANILIST_API_URL, normalizeAniListApiUrl } from "./config";
 
 const MINUTE = 60_000;
 const FIELDS = `id type isAdult countryOfOrigin title { native romaji english } synonyms
-  description coverImage { large } startDate { year } seasonYear season episodes format status popularity
+  description coverImage { large } startDate { year month day } seasonYear season episodes format status popularity
   nextAiringEpisode { episode airingAt }`;
 const envelope = z.object({ data: z.unknown().optional(), errors: z.array(z.unknown()).optional() });
 export type AnimeFeed = "season" | "trending" | "upcoming";

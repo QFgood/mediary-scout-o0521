@@ -1,4 +1,4 @@
-import type { PreparedTrackingTarget } from "@media-track/workflow";
+import { movieAnchorSeason, type PreparedTrackingTarget } from "@media-track/workflow";
 import type { AniListMetadata } from "./mapper";
 
 export type NativeAniListTarget =
@@ -7,13 +7,13 @@ export type NativeAniListTarget =
 
 /** Each AniList entry owns its episode range; S01 is an internal group, never a series mapping. */
 export function prepareNativeAniListTarget(media: AniListMetadata, now = Date.now()): NativeAniListTarget {
-  if (!["TV", "TV_SHORT", "ONA", "OVA"].includes(media.format ?? "")) {
+  if (!["TV", "TV_SHORT", "ONA", "OVA", "MOVIE"].includes(media.format ?? "")) {
     return { supported: false, reason: "此类型暂不支持动画条目获取。" };
   }
   if (!Number.isSafeInteger(media.anilistId) || media.anilistId <= 0 || media.anilistId > 2_147_483_647 || !media.title.trim()) {
     return { supported: false, reason: "AniList 作品标识或标题无效。" };
   }
-  const count = media.episodeCount;
+  const count = media.format === "MOVIE" ? 1 : media.episodeCount;
   if (!count || !Number.isSafeInteger(count) || count > 2000) {
     return { supported: false, reason: "AniList 尚未提供有效的条目总集数，暂无法确定获取范围。" };
   }
@@ -28,6 +28,14 @@ export function prepareNativeAniListTarget(media: AniListMetadata, now = Date.no
   if (media.status === "NOT_YET_RELEASED") latest = 0;
   const knownSchedule = media.status === "FINISHED" || media.status === "NOT_YET_RELEASED" || media.nextAiringEpisode != null || aired.length > 0;
   const id = `anilist_anime_${media.anilistId}`;
+  if (media.format === "MOVIE") {
+    return { supported: true, target: { title: {
+      id, source: "anilist", anilistId: media.anilistId, tmdbId: null, type: "movie",
+      title: media.title, originalTitle: media.originalTitle, aliases: media.aliases, year: media.year ?? 0,
+      anilistStatus: media.status ?? "UNKNOWN", releaseDate: media.releaseDate ?? null, originCountries: ["JP"],
+      posterPath: media.posterUrl, backdropPath: null, overview: media.overview,
+    }, season: movieAnchorSeason({ titleId: id, qualityPreference: "4K", storageDirectoryId: "" }), keyword: media.title.trim() } };
+  }
   return { supported: true, target: {
     title: {
       id, source: "anilist", anilistId: media.anilistId, tmdbId: null, type: "anime",

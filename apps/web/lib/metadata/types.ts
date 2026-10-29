@@ -11,6 +11,7 @@ export type UnifiedMedia = MediaIdentity & {
   aliases: string[];
   mediaType: "movie" | "tv" | "anime";
   year: number | null;
+  releaseDate?: string | null;
   posterUrl: string | null;
   overview: string;
   episodeCount: number | null;

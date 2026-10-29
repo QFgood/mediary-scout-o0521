@@ -12,6 +12,7 @@ import { AcquireProgressBadge } from "./acquire-progress-badge";
 import { AcquiringPoller } from "./acquiring-poller";
 import { TrendingRow } from "./trending-row";
 import type { AnimeFeed } from "../lib/anilist/client";
+import { isMovieUnreleased } from "@media-track/workflow";
 
 export async function AniListResults({ query, selectedId, basePath, storageId, animeFeed }: {
   query: string; selectedId: string; basePath: string; storageId: string | undefined; animeFeed: AnimeFeed;
@@ -48,11 +49,12 @@ export async function AniListCandidateCard({ media, storageId }: { media: AniLis
   const scope = compatibility.supported ? await getActiveWorkspaceScope(storageId) : undefined;
   const state = compatibility.supported ? await getWorkflowRepository().getTrackedSeasonState(compatibility.target.season.id, scope) : null;
   const active = compatibility.supported ? await getWorkflowRepository().findActiveWorkflowRun({
-    trackedSeasonId: compatibility.target.season.id, kind: "type2_init", ...scope,
+    trackedSeasonId: compatibility.target.season.id, kind: compatibility.target.title.type === "movie" ? "movie_init" : "type2_init", ...scope,
   }) : null;
   const externalHref = `https://anilist.co/anime/${media.anilistId}`;
   const detailHref = compatibility.supported ? mediaHref(compatibility.target.title, "search", storageId) : externalHref;
   const address = compatibility.supported ? compatibility.target.title : null;
+  const unreleased = address?.type === "movie" && isMovieUnreleased(address.releaseDate, new Date().toISOString(), address.anilistStatus);
   return (
     <article className="candidate-card">
       <Link className="candidate-poster" href={detailHref} aria-label={`${media.title} 的详情`}>
@@ -67,6 +69,7 @@ export async function AniListCandidateCard({ media, storageId }: { media: AniLis
             <p>{media.year ?? "年份未知"} · {media.format ?? "动漫"} · AniList</p></div>
           <div className="candidate-actions">
             {compatibility.supported && active ? <><AcquiringPoller /><AcquireProgressBadge tmdbId={address!.tmdbId} anilistId={address!.anilistId} seasonNumber={compatibility.target.season.seasonNumber} storageId={storageId} /></>
+              : compatibility.supported && unreleased && !isDemoMode() ? <RequestTrackButton candidateId={`anilist_anime_${media.anilistId}`} anilistId={media.anilistId} storageId={storageId} actionState={state ? "reserved" : "can_reserve"} label={state ? "已预定" : "预定"} />
               : compatibility.supported && state ? <Link className="primary-button" href={detailHref}>查看获取状态</Link>
               : compatibility.supported && !isDemoMode() ? <RequestTrackButton candidateId={`anilist_anime_${media.anilistId}`} {...(address!.tmdbId === null ? { anilistId: address!.anilistId } : { tmdbId: address!.tmdbId })} storageId={storageId} />
               : <button className="primary-button" disabled title={compatibility.supported ? "演示站为只读" : compatibility.reason}>获取</button>}
@@ -74,13 +77,13 @@ export async function AniListCandidateCard({ media, storageId }: { media: AniLis
         </div>
         {media.overview ? <p className="candidate-overview">{media.overview}</p> : null}
         <div className="candidate-meta">
-          <span>{media.episodeCount === null ? "集数未定" : `共 ${media.episodeCount} 集`}</span>
+          <span>{media.format === "MOVIE" ? "电影" : media.episodeCount === null ? "集数未定" : `共 ${media.episodeCount} 集`}</span>
           {media.broadcastSeason ? <span>播出季度：{SEASONS[media.broadcastSeason] ?? media.broadcastSeason}</span> : null}
           {media.status ? <span>{STATUSES[media.status] ?? media.status}</span> : null}
         </div>
         {media.aliases.length ? <p className="panel-note">别名：{media.aliases.join(" / ")}</p> : null}
         <p className="panel-note">{compatibility.supported ? compatibility.mode === "native"
-          ? "按此 AniList 条目的集数范围获取，后续播出自动追踪。"
+          ? media.format === "MOVIE" ? "未上映电影支持预定；上映后巡检自动尝试获取。" : "按此 AniList 条目的集数范围获取，后续播出自动追踪。"
           : `已核验：对应 TMDB 第 ${compatibility.target.season.seasonNumber} 季（${compatibility.target.season.totalEpisodes} 集）` : compatibility.reason}</p>
       </div>
     </article>

@@ -16,6 +16,11 @@ const rawMedia = {
 const pageResponse = () => Response.json({ data: { Page: { media: [rawMedia] } } });
 
 describe("AniList deterministic metadata translation", () => {
+  it("keeps year-only movie dates unknown and only accepts complete valid release dates", () => {
+    expect(mapAniListMedia({ ...rawMedia, format: "MOVIE" })?.releaseDate).toBeNull();
+    expect(mapAniListMedia({ ...rawMedia, format: "MOVIE", startDate: { year: 2027, month: 10, day: 3 } })?.releaseDate).toBe("2027-10-03");
+    expect(mapAniListMedia({ ...rawMedia, format: "MOVIE", startDate: { year: 2027, month: 2, day: 30 } })?.releaseDate).toBeNull();
+  });
   it("retains original identity/titles without manufacturing a TMDB ID or ordinal season", () => {
     const media = mapAniListMedia(rawMedia)!;
     expect(media).toMatchObject({ source: "anilist", anilistId: 123, year: 2027, episodeCount: 12, broadcastSeason: "FALL", overview: "Story\nMore & more" });

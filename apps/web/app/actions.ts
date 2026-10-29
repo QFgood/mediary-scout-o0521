@@ -900,6 +900,18 @@ export async function saveJevConfigAction(input: {
   }
 }
 
+export async function syncDriveLibraryAction(storageId?: string): Promise<{ success: boolean; message?: string; report?: import("@media-track/workflow").LibrarySyncReport }> {
+  assertNotDemo();
+  try {
+    const { syncCurrentDriveLibrary } = await import("../lib/workflow-runtime");
+    const report = await syncCurrentDriveLibrary(storageId);
+    revalidatePath("/", "layout");
+    return { success: true, report };
+  } catch {
+    return { success: false, message: "同步未完成。请检查当前网盘已绑定、登录有效且原分类目录存在，再重试；已有记录和网盘文件保留。" };
+  }
+}
+
 export async function testServiceProxyAction(input: { url: string; services: string[] }): Promise<{ success: boolean; message?: string; results?: import("../lib/service-proxy-probe").ProxyProbeResult[] }> {
   assertNotDemo();
   try {

@@ -10,8 +10,8 @@ export type AniListAcquisitionTarget =
 /** Keep an explicitly configured mapping; otherwise acquire the independent AniList entry. */
 export async function getAniListAcquisitionTarget(media: AniListMetadata, accountId?: string): Promise<AniListAcquisitionTarget> {
   try {
-    const mappings = parseVerifiedMappings(process.env.MEDIA_TRACK_ANILIST_MAPPINGS);
-    if (mappings.some((mapping) => mapping.anilistId === media.anilistId)) {
+    const mappings = media.format === "MOVIE" ? [] : parseVerifiedMappings(process.env.MEDIA_TRACK_ANILIST_MAPPINGS);
+    if (media.format !== "MOVIE" && mappings.some((mapping) => mapping.anilistId === media.anilistId)) {
       const mapped = await getAniListTaskCompatibility(media, accountId);
       return mapped.supported ? { supported: true, target: mapped.target, mode: "mapped" } : mapped;
     }

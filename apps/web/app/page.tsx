@@ -7,6 +7,8 @@ import { RequestTrackButton } from "../components/request-track-button";
 import { AcquireProgressBadge } from "../components/acquire-progress-badge";
 import { DemoSessionLibrary } from "../components/demo-session-library";
 import { LibraryQuickFind } from "../components/library-quick-find";
+import { LibrarySyncButton } from "../components/library-sync-button";
+import { isDemoMode } from "../lib/demo-mode";
 import { RememberQuery } from "../components/search-memory";
 import { SearchForm } from "../components/search-form";
 import { MetadataSourceTabs } from "../components/metadata-source-tabs";
@@ -136,6 +138,7 @@ async function HomeSurface({
         ) : (
           <>
             <DemoSessionLibrary />
+            {!isDemoMode() ? <LibrarySyncButton storageId={storageId} /> : null}
             <Suspense fallback={<LibrarySurfaceSkeleton />}>
               <LibrarySurface mediaType={mediaType} filter={filter} storageId={storageId} />
             </Suspense>

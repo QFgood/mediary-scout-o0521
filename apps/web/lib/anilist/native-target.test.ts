@@ -57,7 +57,7 @@ describe("native AniList acquisition without a TMDB mapping", () => {
   });
 
   it("rejects unknown total counts, unsafe IDs, cancelled works and ambiguous absolute numbering", () => {
-    for (const update of [{ episodeCount: null }, { anilistId: -1 }, { anilistId: 3_000_000_000 }, { status: "CANCELLED" }, { nextAiringEpisode: { episode: 61, airingAt: 1_900_000_000 } }, { format: "MOVIE", mediaType: "movie" as const }]) {
+    for (const update of [{ episodeCount: null }, { anilistId: -1 }, { anilistId: 3_000_000_000 }, { status: "CANCELLED" }, { nextAiringEpisode: { episode: 61, airingAt: 1_900_000_000 } }]) {
       expect(prepareNativeAniListTarget({ ...media, ...update }).supported).toBe(false);
     }
   });

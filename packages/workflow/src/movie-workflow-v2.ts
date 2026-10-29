@@ -94,6 +94,7 @@ export async function runMovieAcquisitionV2(
     title: request.title.title,
     year: request.title.year ?? "—",
     tmdbId: request.title.tmdbId,
+    ...(request.title.anilistId === undefined ? {} : { anilistId: request.title.anilistId }),
   });
 
   const v2 = await runAcquisitionV2({
@@ -197,7 +198,8 @@ function buildResult(input: {
   }).map((episode) => ({ ...episode, obtained: input.obtained }));
 
   const t = input.request.title;
-  const meta = { posterPath: t.posterPath ?? null, tmdbId: t.tmdbId, mediaType: t.type, year: t.year };
+  const meta = { posterPath: t.posterPath ?? null, tmdbId: t.tmdbId, mediaType: t.type, year: t.year,
+    ...(t.anilistId === undefined ? {} : { anilistId: t.anilistId }) };
   if (input.request.userRequest) {
     const report = buildReplacementReport({
       titleName: t.title,
