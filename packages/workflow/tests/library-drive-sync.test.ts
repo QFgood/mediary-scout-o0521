@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { syncLibraryFromDrive, parseLibraryFolder } from "../src/library-drive-sync.js";
+import { syncLibraryFromDrive, parseLibraryFolder, libraryEpisodeCode } from "../src/library-drive-sync.js";
 import { InMemoryWorkflowRepository, type WorkflowRepository } from "../src/repository.js";
 import { createSqliteWorkflowRepository } from "../src/sqlite.js";
 import { movieAnchorSeason, type MediaTitle, type PackageTreeFile } from "../src/domain.js";
@@ -27,7 +27,7 @@ function fixture(repository: WorkflowRepository = new InMemoryWorkflowRepository
     const title: MediaTitle = { id, title: folder.title, originalTitle: folder.title, year: folder.year, type: folder.category, tmdbId: folder.source === "anilist" ? null : folder.id!, aliases: [], ...(folder.source === "anilist" ? { source: "anilist", anilistId: folder.id! } : {}) };
     return { title, season: folder.category === "movie" ? movieAnchorSeason({ titleId: id, qualityPreference: "4K", storageDirectoryId: "" }) : { id: `${id}_s${number}`, mediaTitleId: id, seasonNumber: number, status: "active" as const, qualityPreference: "4K", storageDirectoryId: "", totalEpisodes: 12, latestAiredEpisode: 4, latestAiredSource: "metadata" as const } };
   });
-  const input = { storage, repository, scope, categories: [{ id: "movies", type: "movie" as const }, { id: "tv", type: "tv" as const }, { id: "anime", type: "anime" as const }], resolveTarget };
+  const input = { storage, repository, scope, queueMissing: false, categories: [{ id: "movies", type: "movie" as const }, { id: "tv", type: "tv" as const }, { id: "anime", type: "anime" as const }], resolveTarget };
   return { input, children, trees, storage, repository, resolveTarget };
 }
 
@@ -44,12 +44,76 @@ describe("drive library recovery", () => {
     for (const method of [f.storage.deleteFiles, f.storage.moveFiles, f.storage.createDirectory, f.storage.transfer, f.storage.renameFile]) expect(method).not.toHaveBeenCalled();
     expect(await f.repository.claimNextQueuedWorkflowRun({ kind: "type2_init", now: new Date().toISOString() })).toBeNull();
   });
-  it("is idempotent and preserves existing records and episodes", async () => {
+  it("rescans existing records, repairs newly found episodes, and remains idempotent", async () => {
     const f = fixture(); await syncLibraryFromDrive(f.input);
     const before = await f.repository.listTrackedSeasonStates(scope);
     f.trees.s2!.push(file("new.S02E03.mkv"));
-    expect(await syncLibraryFromDrive(f.input)).toMatchObject({ imported: 0, existing: 3, episodes: 0 });
-    expect(await f.repository.listTrackedSeasonStates(scope)).toEqual(before);
+    expect(await syncLibraryFromDrive(f.input)).toMatchObject({ imported: 0, existing: 3, episodes: 1, updated: 1 });
+    const after = await f.repository.listTrackedSeasonStates(scope);
+    expect(after.find((s) => s.season.id.endsWith("_s2"))?.episodes.find((e) => e.episodeCode === "S02E03")?.obtained).toBe(true);
+    expect(after.find((s) => s.title.type === "movie")).toEqual(before.find((s) => s.title.type === "movie"));
+    expect(await syncLibraryFromDrive(f.input)).toMatchObject({ imported: 0, existing: 3, episodes: 0, updated: 0 });
+  });
+  it("recognizes numeric agent names in their confirmed season only, refusing resolutions and out-of-range numbers", () => {
+    expect(libraryEpisodeCode("001.mkv", 1, 209)).toBe("S01E01");
+    expect(libraryEpisodeCode("002.MP4", 2, 12)).toBe("S02E02");
+    for (const name of ["000.mkv", "1080.mkv", "2026.mp4", "title.001.mkv", "01-12.mkv", "extras/001.mkv"]) expect(libraryEpisodeCode(name, 1, 209)).toBeNull();
+    expect(libraryEpisodeCode("001.mkv", 1, 0)).toBeNull();
+  });
+  it("repairs legacy 001.mkv marks without queuing duplicates, including later seasons", async () => {
+    const f = fixture(); await syncLibraryFromDrive(f.input);
+    f.trees.a1 = [file("001.mkv"), file("002.mkv"), file("003.mkv"), file("004.mkv")];
+    f.trees.s2 = [file("001.mkv"), file("002.mkv"), file("003.mkv"), file("004.mkv")];
+    const report = await syncLibraryFromDrive({ ...f.input, queueMissing: true });
+    expect(report).toMatchObject({ updated: 2, episodes: 4, queued: 0, missingEpisodes: 0, issues: [] });
+    expect((await f.repository.getTrackedSeasonState("tmdb_tv_20_s2", scope))?.episodes.find((e) => e.episodeCode === "S02E03")?.verifiedFileIds).toEqual(["003.mkv"]);
+  });
+  it("queues only truly missing aired episodes and never duplicates an active refill", async () => {
+    const f = fixture(); f.trees.a1 = [file("001.mkv"), file("002.mkv"), file("004.mkv")];
+    const report = await syncLibraryFromDrive({ ...f.input, queueMissing: true });
+    expect(report).toMatchObject({ queued: 2, missingEpisodes: 3 });
+    const run = await f.repository.findActiveWorkflowRun({ ...scope, trackedSeasonId: "anilist_anime_30_s1", kind: "type2_init" });
+    expect(run?.workflowRun.auditEvents[0]?.data).toEqual({ episodes: ["S01E03"] });
+    expect(run?.episodes.filter((e) => e.obtained).map((e) => e.episodeCode)).toEqual(["S01E01", "S01E02", "S01E04"]);
+    expect((await syncLibraryFromDrive({ ...f.input, queueMissing: true })).queued).toBe(0);
+  });
+  it("repairs the reported 1/197/209 false gap using 001.mkv through 197.mkv", async () => {
+    const f = fixture();
+    f.input.categories = [{ id: "anime", type: "anime" }];
+    const impl = f.resolveTarget.getMockImplementation()!;
+    f.resolveTarget.mockImplementation(async (folder, number) => { const target = await impl(folder, number); return { ...target, season: { ...target.season, totalEpisodes: 209, latestAiredEpisode: 197 } }; });
+    f.trees.a1 = [file("动画.S01E197.mkv")];
+    await syncLibraryFromDrive(f.input);
+    f.trees.a1 = Array.from({ length: 197 }, (_, i) => file(`${String(i + 1).padStart(3, "0")}.mkv`));
+    expect(await syncLibraryFromDrive({ ...f.input, queueMissing: true })).toMatchObject({ imported: 0, updated: 1, episodes: 196, queued: 0, missingEpisodes: 0 });
+    expect((await f.repository.listTrackedSeasonStates(scope))[0]?.episodes.filter((e) => e.obtained)).toHaveLength(197);
+  });
+  it("does not queue refill when any video remains unrecognized or metadata is unavailable", async () => {
+    const f = fixture(); f.trees.a1!.push(file("unrecognized.mkv"));
+    const report = await syncLibraryFromDrive({ ...f.input, queueMissing: true });
+    expect(report.queued).toBe(1);
+    expect(await f.repository.findActiveWorkflowRun({ ...scope, trackedSeasonId: "anilist_anime_30_s1", kind: "type2_init" })).toBeNull();
+    const g = fixture(); await syncLibraryFromDrive(g.input); g.trees.a1!.push(file("003.mkv"));
+    g.resolveTarget.mockRejectedValue(new Error("metadata unavailable"));
+    expect(await syncLibraryFromDrive({ ...g.input, queueMissing: true })).toMatchObject({ updated: 1, queued: 0 });
+  });
+  it("refreshes aired counts before deciding which episodes to queue", async () => {
+    const f = fixture(); await syncLibraryFromDrive(f.input);
+    const impl = f.resolveTarget.getMockImplementation()!;
+    f.resolveTarget.mockImplementation(async (folder, number) => { const target = await impl(folder, number); return { ...target, season: { ...target.season, latestAiredEpisode: 5 } }; });
+    const report = await syncLibraryFromDrive({ ...f.input, queueMissing: true });
+    expect(report).toMatchObject({ missingEpisodes: 6, queued: 2 });
+  });
+  it("does not recreate a season cancelled while metadata is being read", async () => {
+    const f = fixture(); await syncLibraryFromDrive(f.input);
+    const impl = f.resolveTarget.getMockImplementation()!;
+    f.resolveTarget.mockImplementation(async (folder, number) => {
+      if (folder.id === 20) await f.repository.untrackTitle(20, scope, "tv", 2);
+      return impl(folder, number);
+    });
+    await syncLibraryFromDrive({ ...f.input, queueMissing: true });
+    expect(await f.repository.getTrackedSeasonState("tmdb_tv_20_s2", scope)).toBeNull();
+    expect(await f.repository.findActiveWorkflowRun({ ...scope, trackedSeasonId: "tmdb_tv_20_s2", kind: "type2_init" })).toBeNull();
   });
   it("marks a fully aired and fully restored series complete", async () => {
     const f = fixture(); const actual = f.resolveTarget.getMockImplementation()!;
@@ -97,6 +161,23 @@ describe("drive library recovery", () => {
 describe("SQLite durable recovery", () => {
   const paths: string[] = [];
   afterEach(() => { for (const path of paths.splice(0)) rmSync(path, { recursive: true, force: true }); });
+  it("persists repaired numeric episodes and refill tasks across restart", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "library-refill-")); paths.push(directory);
+    const path = join(directory, "library.sqlite");
+    let repo = createSqliteWorkflowRepository({ path });
+    try {
+      const f = fixture(repo); await syncLibraryFromDrive(f.input);
+      f.trees.a1!.push(file("003.mkv"));
+      expect(await syncLibraryFromDrive({ ...f.input, queueMissing: true })).toMatchObject({ updated: 1, queued: 2 });
+    } finally { repo.close(); }
+    repo = createSqliteWorkflowRepository({ path });
+    try {
+      const run = await repo.findActiveWorkflowRun({ ...scope, trackedSeasonId: "anilist_anime_30_s1", kind: "type2_init" });
+      expect(run?.workflowRun.status).toBe("queued");
+      expect(run?.workflowRun.auditEvents[0]?.data).toEqual({ episodes: ["S01E04"] });
+      expect(run?.episodes.find((e) => e.episodeCode === "S01E03")?.verifiedFileIds).toEqual(["003.mkv"]);
+    } finally { repo.close(); }
+  });
   it("survives repository restart and remains idempotent", async () => {
     const directory = mkdtempSync(join(tmpdir(), "library-sync-")); paths.push(directory);
     const path = join(directory, "library.sqlite");

@@ -11,8 +11,8 @@ export function LibrarySyncButton({ storageId }: { storageId?: string | undefine
   const [report, setReport] = useState<LibrarySyncReport | null>(null);
   const [message, setMessage] = useState("");
   const router = useRouter();
-  return <div style={{ marginBottom: 16 }}>
-    <div className="service-actions" style={{ justifyContent: "flex-end" }}>
+  return <div className="library-sync-controls">
+    <div className="library-sync-action">
       <button type="button" className="secondary-button" disabled={pending} onClick={() => startTransition(async () => {
         setReport(null); setMessage("正在扫描当前网盘已有资源，请保持页面打开……");
         const result = await runAction(() => syncDriveLibraryAction(storageId), setMessage);
@@ -22,11 +22,11 @@ export function LibrarySyncButton({ storageId }: { storageId?: string | undefine
         if (result.value.success) router.refresh();
       })}><RefreshCw size={14} className={pending ? "spin" : undefined} aria-hidden />{pending ? "同步中……" : "同步网盘资源"}</button>
     </div>
-    <p className="panel-note">扫描当前网盘的电影、剧集和动漫分类目录，补回缺失的媒体库记录；已有记录保留，网盘文件不移动、不删除。</p>
-    {message ? <p className="panel-note" role="status">{message}</p> : null}
-    {report ? <div className="panel-note">
-      <p>新增 {report.imported} 个作品/季度，恢复 {report.episodes} 集/部；已有 {report.existing} 项跳过，{report.issues.length} 项需要核对。</p>
-      {report.issues.length ? <details><summary>查看未同步内容</summary><ul>{report.issues.map((item, index) => <li key={index}>{item.name}：{item.reason}</li>)}</ul></details> : null}
+    <p className="library-sync-description">扫描原电影、剧集和动漫目录，恢复并核对入库集数；确认缺少的已播集自动提交补集任务。</p>
+    {message ? <p className="panel-note library-sync-report" role="status">{message}</p> : null}
+    {report ? <div className="panel-note library-sync-report">
+      <p>新增 {report.imported} 个作品/季度，修正 {report.updated} 项，恢复 {report.episodes} 集/部；复核已有 {report.existing} 项，发现 {report.missingEpisodes} 集已播缺集，已提交 {report.queued} 个补集任务，{report.issues.length} 项需要核对。</p>
+      {report.issues.length ? <details><summary>查看需核对内容</summary><ul>{report.issues.map((item, index) => <li key={index}>{item.name}：{item.reason}</li>)}</ul></details> : null}
     </div> : null}
   </div>;
 }

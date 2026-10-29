@@ -267,12 +267,13 @@ async function persistSingleSeason(input: {
 }
 
 export async function runType2InitializationV2AndPersist(
-  input: TvV2Common & { season: TrackedSeason },
+  input: TvV2Common & { season: TrackedSeason; priorObtained?: string[] },
 ): Promise<BridgedV2Result> {
   const now = resolveNow(input);
   const bridged = await runTvAcquisitionV2({
     title: input.title,
     mode: "type2",
+    ...(input.priorObtained === undefined ? {} : { priorObtained: input.priorObtained }),
     seasons: [
       {
         seasonNumber: input.season.seasonNumber,

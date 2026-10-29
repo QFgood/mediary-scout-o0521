@@ -138,7 +138,6 @@ async function HomeSurface({
         ) : (
           <>
             <DemoSessionLibrary />
-            {!isDemoMode() ? <LibrarySyncButton storageId={storageId} /> : null}
             <Suspense fallback={<LibrarySurfaceSkeleton />}>
               <LibrarySurface mediaType={mediaType} filter={filter} storageId={storageId} />
             </Suspense>
@@ -436,6 +435,7 @@ async function LibrarySurface({ mediaType, filter, storageId }: { mediaType: str
   if (wall.length === 0 && inProgress.length === 0) {
     return (
       <section className="library-surface">
+        <div className="library-sync-heading"><h1>我的媒体库</h1>{!isDemoMode() ? <LibrarySyncButton storageId={storageId} /> : null}</div>
         <div className="quiet-state">
           <Library size={24} aria-hidden />
           <strong>媒体库还是空的</strong>
@@ -458,6 +458,7 @@ async function LibrarySurface({ mediaType, filter, storageId }: { mediaType: str
         mode={category ? "category" : "home"}
         mediaType={category ?? undefined}
         filter={filter === "complete" || filter === "tracking" || filter === "partial" ? filter : "all"}
+        syncControl={!isDemoMode() ? <LibrarySyncButton storageId={storageId} /> : undefined}
       />
     </section>
   );
