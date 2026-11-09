@@ -309,3 +309,34 @@ describe("createJevJudge — nsfw question", () => {
     expect(Object.keys(res.nsfw!)).toHaveLength(n);
   });
 });
+
+
+describe("Cloudflare Clef", () => {
+  it.each(["clef-flash", "clef"])("uses %s and keeps every batch within 64 questions", async (model) => {
+    const batches: any[] = [];
+    const judge = createJevJudge({
+      apiKey: "cf-token",
+      baseUrl: `https://proxy.example/client/v4/accounts/account/ai/run/@cf/cloudflare/${model}/`,
+      fetchImpl: (async (_url, init) => {
+        const body = JSON.parse(String(init?.body));
+        batches.push(body);
+        expect(body.model).toBe(model);
+        expect(Object.keys(body.questions).length).toBeLessThanOrEqual(64);
+        return Response.json({ success: true, result: {
+          model,
+          answers: Object.fromEntries(Object.keys(body.questions).map(k => [k, { noul: k.startsWith("n") ? 0.01 : 0.9 }])),
+          usage: { input_tokens: 100 },
+        } });
+      }) as typeof fetch,
+    });
+    const result = await judge.judgeCandidates({
+      target: { kind: "tv", title: "t", aliases: [] },
+      candidates: Array.from({ length: 65 }, (_, i) => ({ id: `id${i}`, title: `title${i}` })),
+    });
+    expect(batches).toHaveLength(3);
+    expect(Object.keys(result.scores)).toHaveLength(65);
+    expect(Object.keys(result.nsfw!)).toHaveLength(65);
+    expect(result.model).toBe(model);
+    expect(result.inputTokens).toBe(300);
+  });
+});

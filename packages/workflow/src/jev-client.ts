@@ -14,6 +14,24 @@ export const JEV_CHUNK_SIZE = 150;
 /** p90 was 0.9s over OpenRouter, 1.1s for a 322-candidate batch. 8s is a wide ceiling. */
 export const JEV_TIMEOUT_MS = 8_000;
 
+/** Cloudflare native REST and AI Gateway URLs retain the model in their path.
+ * Compatible proxies must expose the same suffix to select this protocol. */
+export function getJevEndpointModel(baseUrl: string): string {
+  const path = new URL(baseUrl).pathname.replace(/\/$/, "");
+  if (path.endsWith("/@cf/cloudflare/clef-flash")) return "clef-flash";
+  if (path.endsWith("/@cf/cloudflare/clef")) return "clef";
+  return JEV_MODEL;
+}
+
+/** Workers AI REST wraps the native decisions response in {success, result}. */
+export function unwrapJevResponse(body: unknown): unknown {
+  if (body && typeof body === "object" && "success" in body) {
+    const envelope = body as { success: unknown; result?: unknown };
+    return envelope.success === true ? envelope.result : null;
+  }
+  return body;
+}
+
 export interface JevClientConfig {
   apiKey: string;
   baseUrl?: string;
@@ -36,13 +54,16 @@ export function createJevJudge(config: JevClientConfig): JevJudge {
   const apiKey = config.apiKey.trim();
   // A whitespace-only baseUrl from a settings row must not POST to "" (same-origin).
   const baseUrl = config.baseUrl?.trim() || DEFAULT_JEV_BASE_URL;
+  const model = getJevEndpointModel(baseUrl);
+  // Two questions per candidate; Clef accepts at most 64 questions.
+  const chunkSize = model === JEV_MODEL ? JEV_CHUNK_SIZE : 32;
   const fetchImpl = config.fetchImpl ?? ((input, init) => globalThis.fetch(input, init));
   const timeoutMs = config.timeoutMs ?? JEV_TIMEOUT_MS;
 
   async function judgeChunk(input: JevJudgeInput): Promise<JevJudgeResult> {
     const keys = input.candidates.map((_, i) => `c${i}`);
     const body = {
-      model: JEV_MODEL,
+      model,
       state: {
         target: {
           title: input.target.title,
@@ -84,7 +105,7 @@ export function createJevJudge(config: JevClientConfig): JevJudge {
     if (!response.ok) throw new Error(`Jev HTTP ${response.status}`);
     let parsed: DecisionsResponse;
     try {
-      parsed = (await response.json()) as DecisionsResponse;
+      parsed = unwrapJevResponse(await response.json()) as DecisionsResponse;
     } catch (error) {
       // Only a real parse failure is "invalid JSON". A connection dropped mid-body is a
       // TypeError("terminated"), an aborted read an AbortError — calling those bad JSON
@@ -116,7 +137,7 @@ export function createJevJudge(config: JevClientConfig): JevJudge {
     return {
       scores,
       nsfw,
-      model: typeof parsed.model === "string" ? parsed.model : JEV_MODEL,
+      model: typeof parsed.model === "string" ? parsed.model : model,
       ...(inputTokens === undefined ? {} : { inputTokens }),
       ...(cost === undefined ? {} : { cost }),
     };
@@ -124,10 +145,10 @@ export function createJevJudge(config: JevClientConfig): JevJudge {
 
   return {
     async judgeCandidates(input) {
-      if (input.candidates.length === 0) return { scores: {}, model: JEV_MODEL };
+      if (input.candidates.length === 0) return { scores: {}, model };
       const chunks: JevJudgeInput[] = [];
-      for (let i = 0; i < input.candidates.length; i += JEV_CHUNK_SIZE) {
-        chunks.push({ target: input.target, candidates: input.candidates.slice(i, i + JEV_CHUNK_SIZE) });
+      for (let i = 0; i < input.candidates.length; i += chunkSize) {
+        chunks.push({ target: input.target, candidates: input.candidates.slice(i, i + chunkSize) });
       }
       // allSettled, not all: a single 429'd chunk must not throw away the chunks that
       // answered. Unscored candidates are kept by the provider, so a partial result costs

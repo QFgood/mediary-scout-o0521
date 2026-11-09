@@ -442,6 +442,10 @@ async function LlmConfigSection() {
               </a>
               。用官方 Key 时把 Base URL 填为 https://api.typesafe.ai/v1/systemone；留空则沿用实例配置的地址（框内灰字，都未配置时为 OpenRouter 的 decisions 端点）。
             </p>
+            <p>
+              也支持 Cloudflare Clef：Base URL 填完整的 https://api.cloudflare.com/client/v4/accounts/你的账户ID/ai/run/@cf/cloudflare/clef-flash，Key 填 Workers AI API Token。
+              使用代理时保留 /@cf/cloudflare/clef-flash 路径后缀；自动选择 clef-flash 并按最多 64 个问题分批，不使用 chat/completions 接口。
+            </p>
           </>
         }
       >
