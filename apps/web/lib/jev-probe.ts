@@ -5,7 +5,7 @@
  * silently failing" — that failure mode is exactly what fail-open would hide
  * (the 自建搜索源 that "worked" for 6 days is the same story).
  */
-import { JEV_MODEL } from "@media-track/workflow";
+import { getJevEndpointModel, unwrapJevResponse } from "@media-track/workflow";
 
 export type JevProbeFailure = "unreachable" | "auth_failed" | "http_error" | "not_jev";
 
@@ -21,6 +21,7 @@ export async function probeJev(
 ): Promise<JevProbeResult> {
   const fetchImpl = options.fetchImpl ?? fetch;
   try {
+    const model = getJevEndpointModel(config.baseUrl.trim());
     const response = await fetchImpl(config.baseUrl.trim(), {
       method: "POST",
       // trim: a key pasted into a settings field carries a trailing newline and
@@ -29,9 +30,9 @@ export async function probeJev(
       // One fixed noul question — the answer's VALUE is irrelevant, its shape is
       // the whole point: only a real decisions endpoint returns answers.probe.noul.
       body: JSON.stringify({
-        // The same constant jev-client sends: probing a model the client never
+        // The same endpoint model jev-client sends: probing a model the client never
         // asks for would certify an endpoint the real搜索 doesn't exercise.
-        model: JEV_MODEL,
+        model,
         state: { candidate: "都挺好 2019 全46集 国语中字 1080P" },
         questions: { probe: { type: "noul", instructions: "`candidate` 是一个中文电视剧资源标题" } },
       }),
@@ -41,7 +42,7 @@ export async function probeJev(
       return {
         ok: false,
         reason: "auth_failed",
-        message: "这个 Jev API Key 被拒绝（401/403），未保存。请检查 Key 是否正确、账户是否有余额（OpenRouter 或 TypeSafe 官方的 Key 都可以）。",
+        message: "这个 Jev API Key 被拒绝（401/403），未保存。请检查 Key 是否正确、账户是否有余额（OpenRouter、TypeSafe 官方或 Cloudflare Workers AI 的 Key 都可以）。",
       };
     }
     if (!response.ok) {
@@ -52,7 +53,7 @@ export async function probeJev(
     // parse failure means that: a body read that DIES (connection dropped → TypeError
     // "terminated", the 8s signal firing mid-body → TimeoutError) says nothing about
     // what the endpoint is, so it goes to the transport handler below like any other.
-    const body = (await response.json().catch((error: unknown) => {
+    const body = unwrapJevResponse(await response.json().catch((error: unknown) => {
       if (error instanceof SyntaxError) return null;
       throw error;
     })) as { model?: unknown; answers?: { probe?: { noul?: unknown } } } | null;
@@ -65,10 +66,10 @@ export async function probeJev(
         ok: false,
         reason: "not_jev",
         message:
-          "这个地址返回的不是 Jev decisions 响应（缺少 answers.probe.noul），未保存。Base URL 应指向 OpenRouter 的 /api/alpha/decisions 或 TypeSafe 的 /v1/systemone。",
+          "这个地址返回的不是 Jev decisions 响应（缺少 answers.probe.noul），未保存。Base URL 应指向 OpenRouter 的 /api/alpha/decisions 、TypeSafe 的 /v1/systemone 或 Cloudflare 的 /ai/run/@cf/cloudflare/clef-flash。",
       };
     }
-    return { ok: true, model: typeof body?.model === "string" ? body.model : JEV_MODEL };
+    return { ok: true, model: typeof body?.model === "string" ? body.model : model };
   } catch (error) {
     // AbortSignal.timeout rejects with TimeoutError (AbortError when something
     // else aborts). Folding both into the generic 「网络错误」 text hides the one

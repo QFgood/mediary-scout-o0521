@@ -231,3 +231,16 @@ describe("validateJevBaseUrlFormat", () => {
     expect(validateJevBaseUrlFormat("  http://localhost:8080/v1/systemone  ")).toEqual({ ok: true });
   });
 });
+
+
+it.each([true, false])("probes Cloudflare with matching model and validates success=%s", async (success) => {
+  const result = await probeJev({
+    apiKey: "cf-token",
+    baseUrl: "https://api.cloudflare.com/client/v4/accounts/account/ai/run/@cf/cloudflare/clef-flash",
+  }, { fetchImpl: (async (_url, init) => {
+    expect(JSON.parse(String(init?.body)).model).toBe("clef-flash");
+    return Response.json({ success, result: { answers: { probe: { noul: 0.9 } } } });
+  }) as typeof fetch });
+  if (success) expect(result).toEqual({ ok: true, model: "clef-flash" });
+  else expect(result).toMatchObject({ ok: false, reason: "not_jev" });
+});
