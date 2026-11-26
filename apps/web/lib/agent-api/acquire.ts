@@ -1,5 +1,5 @@
-import { createTmdbSearchProvider, type MediaSearchProvider } from "@media-track/workflow";
-import { getTmdbAccesses, getAccountScopedSettings, queueCandidateTracking } from "../workflow-runtime";
+import { queueCandidateTracking } from "../workflow-runtime";
+import { getAgentMediaSearchProvider } from "./search";
 
 export interface AcquireInput {
   query: string;
@@ -27,7 +27,7 @@ export async function acquireMedia(input: AcquireInput, accountId: string): Prom
     return queueByTmdbId(input.tmdbId, input.type ?? "tv", input.season, input.storageId);
   }
 
-  const provider = await getTmdbSearchProvider(accountId);
+  const provider = await getAgentMediaSearchProvider(accountId);
   const results = await provider.searchMedia({ query: input.query });
 
   if (results.length === 0) {
@@ -124,10 +124,4 @@ async function queueByTmdbId(
     };
   }
   return { status: "requested", message: "获取任务已在运行中，不会重复创建。", matched };
-}
-
-async function getTmdbSearchProvider(accountId: string): Promise<MediaSearchProvider> {
-  const settings = getAccountScopedSettings(accountId);
-  const accesses = await getTmdbAccesses(settings);
-  return createTmdbSearchProvider(accesses);
 }
