@@ -22,8 +22,18 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "请求体必须是 JSON" }, { status: 400 });
   }
-  if (!body.query?.trim() && !body.tmdbId) {
-    return NextResponse.json({ error: "query 或 tmdbId 至少提供一个" }, { status: 400 });
+  if (!body || typeof body !== "object" || Array.isArray(body) ||
+    (body.query != null && typeof body.query !== "string") ||
+    (body.tmdbId != null && (!Number.isSafeInteger(body.tmdbId) || body.tmdbId < 1)) ||
+    (body.anilistId != null && (!Number.isSafeInteger(body.anilistId) || body.anilistId < 1 || body.anilistId > 2_147_483_647)) ||
+    (body.type != null && body.type !== "movie" && body.type !== "tv") ||
+    (body.season != null && (!Number.isSafeInteger(body.season) || body.season < 0)) ||
+    (body.storageId != null && typeof body.storageId !== "string") ||
+    (body.reserve != null && typeof body.reserve !== "boolean") ||
+    (body.anilistId != null && (body.tmdbId != null || body.query?.trim() || body.season != null || body.type != null)) ||
+    (body.reserve && body.anilistId == null) ||
+    (!body.query?.trim() && body.tmdbId == null && body.anilistId == null)) {
+    return NextResponse.json({ error: "请提供有效的 query、tmdbId 或 anilistId；AniList 作品需单独指定" }, { status: 400 });
   }
 
   const accountId = await getOwnerAccountId();

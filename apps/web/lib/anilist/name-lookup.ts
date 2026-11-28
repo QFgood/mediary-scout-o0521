@@ -1,8 +1,8 @@
 /** TMDB supplies localized work names, rather than a literal machine translation. */
-export async function lookupAniListOriginalNames(query: string): Promise<string[]> {
+export async function lookupAniListOriginalNames(query: string, accountId?: string): Promise<string[]> {
   const { createTmdbSearchProvider } = await import("@media-track/workflow");
   const runtime = await import("../workflow-runtime");
-  const settings = runtime.getAccountScopedSettings(await runtime.getCurrentAccountId());
+  const settings = runtime.getAccountScopedSettings(accountId ?? await runtime.getCurrentAccountId());
   // Only names are needed. Avoid fetching a TV detail page for every candidate.
   const provider = createTmdbSearchProvider(await runtime.getTmdbAccesses(settings), { tvDetailsLimit: 0 });
   const candidates = await provider.searchMedia({ query });

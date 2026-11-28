@@ -1,12 +1,14 @@
-import { queueCandidateTracking } from "../workflow-runtime";
+import { queueCandidateTracking, reserveCandidate } from "../workflow-runtime";
 import { getAgentMediaSearchProvider } from "./search";
 
 export interface AcquireInput {
-  query: string;
+  query?: string;
   type?: "tv" | "movie" | null;
   season?: number | null;
   storageId?: string | null;
   tmdbId?: number | null;
+  anilistId?: number | null;
+  reserve?: boolean;
 }
 
 export interface AcquireResult {
@@ -23,12 +25,30 @@ export interface AcquireResult {
  * single best match → queue, or multiple high scores → 409 candidates.
  */
 export async function acquireMedia(input: AcquireInput, accountId: string): Promise<AcquireResult> {
+  if (input.anilistId) {
+    const candidateId = `anilist_anime_${input.anilistId}`;
+    if (input.reserve) {
+      const reservation = await reserveCandidate(candidateId, input.storageId, accountId);
+      if (reservation.status === "unsupported") {
+        return { status: "unsupported", message: reservation.message };
+      }
+      if (reservation.status === "already_tracked") {
+        return { status: "already_tracked", message: "该作品已在追踪或已预定。" };
+      }
+      if (reservation.status === "already_running") {
+        return { status: "requested", message: "获取任务已在运行中，不会重复创建。" };
+      }
+      return { status: "reserved", message: "已预定，播出后会自动尝试获取。" };
+    }
+    return queueCandidate(candidateId, input.storageId, accountId);
+  }
   if (input.tmdbId) {
-    return queueByTmdbId(input.tmdbId, input.type ?? "tv", input.season, input.storageId);
+    return queueByTmdbId(input.tmdbId, input.type ?? "tv", input.season, input.storageId, accountId);
   }
 
   const provider = await getAgentMediaSearchProvider(accountId);
-  const results = await provider.searchMedia({ query: input.query });
+  const query = input.query ?? "";
+  const results = await provider.searchMedia({ query });
 
   if (results.length === 0) {
     return { status: "not_found", message: `TMDB 没搜到「${input.query}」的结果，换个关键词试试。` };
@@ -42,7 +62,7 @@ export async function acquireMedia(input: AcquireInput, accountId: string): Prom
     };
   }
 
-  const queryNorm = input.query.trim().toLowerCase();
+  const queryNorm = query.trim().toLowerCase();
   const currentYear = new Date().getFullYear();
   const scored = filtered.map((result, index) => {
     // TMDB returns popularity-ordered results; earlier rank = higher base score.
@@ -80,7 +100,7 @@ export async function acquireMedia(input: AcquireInput, accountId: string): Prom
     };
   }
 
-  return queueByTmdbId(top.candidate.tmdbId, top.candidate.mediaType, input.season, input.storageId, {
+  return queueByTmdbId(top.candidate.tmdbId, top.candidate.mediaType, input.season, input.storageId, accountId, {
     title: top.candidate.title,
     year: top.candidate.year,
   });
@@ -91,6 +111,7 @@ async function queueByTmdbId(
   type: "tv" | "movie",
   season: number | null | undefined,
   storageId: string | null | undefined,
+  accountId: string,
   matchedTitle?: { title: string; year: number | null },
 ): Promise<AcquireResult> {
   // candidateId formats from workflow-runtime.ts parsers:
@@ -99,8 +120,6 @@ async function queueByTmdbId(
   const candidateId =
     type === "movie" ? `tmdb_movie_${tmdbId}` : `tmdb_tv_${tmdbId}_s${season ?? 1}`;
 
-  const result = await queueCandidateTracking(candidateId, storageId ?? undefined);
-
   const matched = {
     tmdbId,
     title: matchedTitle?.title ?? "",
@@ -108,20 +127,28 @@ async function queueByTmdbId(
     type,
   };
 
+  return { ...await queueCandidate(candidateId, storageId, accountId), matched };
+}
+
+async function queueCandidate(
+  candidateId: string,
+  storageId: string | null | undefined,
+  accountId: string,
+): Promise<AcquireResult> {
+  const result = await queueCandidateTracking(candidateId, storageId, accountId);
   if (result.status === "unsupported") {
-    return { status: "unsupported", message: result.message ?? "不支持的获取目标。", matched };
+    return { status: "unsupported", message: result.message ?? "不支持的获取目标。" };
   }
   if (result.status === "already_tracked") {
-    return { status: "already_tracked", message: "已在追踪，后台会继续按缺集状态检查。", matched };
+    return { status: "already_tracked", message: "已在追踪，后台会继续按缺集状态检查。" };
   }
   if (result.status === "queued") {
     return {
       status: "requested",
       message: "已加入后台队列，完成后会通知你。",
-      matched,
       workflowRunId: result.workflowRunId,
       trackedSeasonId: result.trackedSeasonId,
     };
   }
-  return { status: "requested", message: "获取任务已在运行中，不会重复创建。", matched };
+  return { status: "requested", message: "获取任务已在运行中，不会重复创建。" };
 }

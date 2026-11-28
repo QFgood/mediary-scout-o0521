@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { agentApiGuard } from "../../../../lib/agent-api/guard";
 import { getOwnerAccountId } from "../../../../lib/agent-api/owner";
 import { getAgentMediaSearchProvider } from "../../../../lib/agent-api/search";
+import { getAniListSearchView } from "../../../../lib/anilist/search";
+import { getAniListClient } from "../../../../lib/anilist/server-client";
 import { GET } from "./route";
 
 vi.mock("next/server", async () => {
@@ -12,6 +14,9 @@ vi.mock("next/server", async () => {
 vi.mock("../../../../lib/agent-api/guard", () => ({ agentApiGuard: vi.fn() }));
 vi.mock("../../../../lib/agent-api/owner", () => ({ getOwnerAccountId: vi.fn() }));
 vi.mock("../../../../lib/agent-api/search", () => ({ getAgentMediaSearchProvider: vi.fn() }));
+
+vi.mock("../../../../lib/anilist/search", () => ({ getAniListSearchView: vi.fn() }));
+vi.mock("../../../../lib/anilist/server-client", () => ({ getAniListClient: vi.fn() }));
 
 describe("GET /api/agent/search", () => {
   const searchMedia = vi.fn();
@@ -47,6 +52,31 @@ describe("GET /api/agent/search", () => {
       { tmdbId: 2, title: "Same title", originalTitle: "Series", type: "tv", year: 2025, overview: "Synopsis", posterPath: "/series.jpg",
         seasonNumbers: [1, 2] },
     ] });
+  });
+
+  it("uses the owner's AniList client and identifies results and reservations", async () => {
+    vi.mocked(getAniListSearchView).mockResolvedValue({
+      query: "作品",
+      state: "ready",
+      candidates: [{
+        source: "anilist", anilistId: 42, title: "作品", originalTitle: "作品",
+        mediaType: "anime", year: 2027, aliases: [], posterUrl: "https://example.test/poster.jpg",
+        overview: "简介", episodeCount: 12, status: "NOT_YET_RELEASED",
+      }],
+    });
+    const response = await GET(request({ query: "作品", source: "anilist" }));
+    expect(getAniListClient).toHaveBeenCalledWith("owner");
+    expect(searchMedia).not.toHaveBeenCalled();
+    expect(await response.json()).toEqual({ source: "anilist", items: [{
+      anilistId: 42, title: "作品", originalTitle: "作品", type: "anime", year: 2027,
+      overview: "简介", posterUrl: "https://example.test/poster.jpg", episodeCount: 12, reserve: true,
+    }] });
+  });
+
+  it("reports an AniList provider failure without falling back to TMDB", async () => {
+    vi.mocked(getAniListSearchView).mockResolvedValue({ query: "Test", state: "provider_error", candidates: [] });
+    expect((await GET(request({ query: "Test", source: "anilist" }))).status).toBe(502);
+    expect(searchMedia).not.toHaveBeenCalled();
   });
 
   it("returns an empty list for a miss and rejects invalid type", async () => {
