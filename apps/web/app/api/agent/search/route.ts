@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
         type: match.mediaType,
         year: match.year > 0 ? match.year : null,
         overview: match.overview,
+        posterPath: match.posterPath ?? null,
         seasonNumbers: [...new Set(match.seasons.map((season) => season.seasonNumber))].sort((a, b) => a - b),
       }));
     return NextResponse.json({ items });
