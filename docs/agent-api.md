@@ -41,7 +41,7 @@ skill 用 `curl` 和 `jq` 调接口。Git Bash 不带 `jq`，Windows 上先装�
 |---|---|---|
 | `GET` | `/api/agent/config` | 读设置（密钥打码） |
 | `PUT` | `/api/agent/config` | 改部分设置（拒绝写回打码的 `***`） |
-| `GET` | `/api/agent/search?query=片名&type=tv` | 只搜索 TMDB，返回候选及季数，不创建任务（`type` 可省略，支持 `movie` 或 `tv`） |
+| `GET` | `/api/agent/search?query=片名&type=tv` | 只读搜索。默认 TMDB（`type` 可省略，支持 `movie` 或 `tv`）；传 `source=anilist` 搜索 AniList |
 | `POST` | `/api/agent/acquire` | 查 TMDB 后入队获取（有歧义返回 409） |
 | `POST` | `/api/agent/patrol` | 立即巡检一轮 |
 | `GET` | `/api/agent/library` | 在追的作品和缺的集 |
@@ -50,3 +50,5 @@ skill 用 `curl` 和 `jq` 调接口。Git Bash 不带 `jq`，Windows 上先装�
 全部要带 `Authorization: Bearer <token>`。没配 token 时这些接口返回 404（等于不存在）；token 不对或没带返回 401。
 
 需要先选片的客户端可调用搜索接口并展示返回的 `items`，其中 `posterPath` 是 TMDB 海报路径，缺少海报时为 `null`。用户确认后，向获取接口提交选中的 `tmdbId`、`type` 和需要的 `season`。
+
+AniList 搜索返回 `source: "anilist"`，候选包含 `anilistId`、`posterUrl`、`episodeCount` 和 `reserve`。获取时只提交该作品的 `anilistId`（可选 `storageId`）；需要预定时同时传 `reserve: true`。

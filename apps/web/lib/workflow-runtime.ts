@@ -826,10 +826,11 @@ export async function getWorkflowStatusView(
 export async function queueCandidateTracking(
   candidateId: string,
   connectedStorageId?: string | null,
+  authenticatedAccountId?: string,
 ): Promise<CandidateTrackingRequestResult> {
   let accountId: string;
   try {
-    accountId = await requireAuthenticatedAccountId();
+    accountId = authenticatedAccountId ?? await requireAuthenticatedAccountId();
   } catch (error) {
     return {
       status: "unsupported",
@@ -874,7 +875,7 @@ export async function queueCandidateTracking(
   }
   const movieTmdbId = parseMovieCandidateId(candidateId);
   if (movieTmdbId !== null) {
-    const movie = await movieTargetFromTmdbId(movieTmdbId);
+    const movie = await movieTargetFromTmdbId(movieTmdbId, accountId);
     if (!movie) {
       return { status: "unsupported", message: "无法获取该电影的信息。" };
     }
@@ -892,7 +893,7 @@ export async function queueCandidateTracking(
     };
   }
 
-  const target = await trackingTargetFromCandidateId(candidateId);
+  const target = await trackingTargetFromCandidateId(candidateId, accountId);
   if (!target) {
     return {
       status: "unsupported",
@@ -1546,12 +1547,13 @@ function parseMovieCandidateId(candidateId: string): number | null {
 
 export async function movieTargetFromTmdbId(
   tmdbId: number,
+  accountId?: string,
 ): Promise<{ title: MediaTitle; keyword: string } | null> {
   if (process.env.MEDIA_TRACK_SEARCH_PROVIDER === "tmdb") {
     return prepareMovieTarget({
       tmdbId,
       qualityPreference: defaultQuality(),
-      metadataProvider: createTmdbMetadataProvider(await getTmdbAccesses(getAccountScopedSettings(await getCurrentAccountId()))),
+      metadataProvider: createTmdbMetadataProvider(await getTmdbAccesses(getAccountScopedSettings(accountId ?? await getCurrentAccountId()))),
     });
   }
   const candidate = findDemoCandidateByTmdbId(tmdbId);
@@ -1587,10 +1589,11 @@ export type CandidateReserveRequestResult =
 export async function reserveCandidate(
   candidateId: string,
   connectedStorageId?: string | null,
+  authenticatedAccountId?: string,
 ): Promise<CandidateReserveRequestResult> {
   let accountId: string;
   try {
-    accountId = await requireAuthenticatedAccountId();
+    accountId = authenticatedAccountId ?? await requireAuthenticatedAccountId();
   } catch (error) {
     return {
       status: "unsupported",
@@ -1613,7 +1616,7 @@ export async function reserveCandidate(
       movie = native.target;
       if (!animeReservation && !isMovieUnreleased(movie.title.releaseDate, new Date().toISOString(), movie.title.anilistStatus)) return { status: "unsupported", message: "该电影已上映，请刷新后直接获取。" };
     } catch { return { status: "unsupported", message: "无法读取 AniList 电影上映状态，请稍后重试。" }; }
-  } else if (movieTmdbId !== null) movie = await movieTargetFromTmdbId(movieTmdbId);
+  } else if (movieTmdbId !== null) movie = await movieTargetFromTmdbId(movieTmdbId, accountId);
   else return { status: "unsupported", message: "只有电影可以预定。" };
   if (!movie) {
     return { status: "unsupported", message: "无法获取该电影的信息。" };
@@ -2193,7 +2196,7 @@ async function seedDemoIfEmpty(targetRepository: WorkflowRepository): Promise<vo
   await seedDemoWorkflowRepository(targetRepository);
 }
 
-async function trackingTargetFromCandidateId(candidateId: string): Promise<{
+async function trackingTargetFromCandidateId(candidateId: string, accountId?: string): Promise<{
   title: MediaTitle;
   season: TrackedSeason;
   keyword: string;
@@ -2210,7 +2213,7 @@ async function trackingTargetFromCandidateId(candidateId: string): Promise<{
       seasonNumber: parsed.seasonNumber,
       qualityPreference: defaultQuality(),
       storageDirectoryId: storageDirectoryIdForCandidate(candidateId),
-      metadataProvider: createTmdbMetadataProvider(await getTmdbAccesses(getAccountScopedSettings(await getCurrentAccountId()))),
+      metadataProvider: createTmdbMetadataProvider(await getTmdbAccesses(getAccountScopedSettings(accountId ?? await getCurrentAccountId()))),
     });
   }
 
