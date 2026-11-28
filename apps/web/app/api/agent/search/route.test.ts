@@ -36,7 +36,7 @@ describe("GET /api/agent/search", () => {
   it("returns even a single matching title with its identity and seasons", async () => {
     searchMedia.mockResolvedValue([
       { tmdbId: 1, title: "Same title", originalTitle: "Film", mediaType: "movie", year: 2024, overview: "", seasons: [] },
-      { tmdbId: 2, title: "Same title", originalTitle: "Series", mediaType: "tv", year: 2025, overview: "Synopsis",
+      { tmdbId: 2, title: "Same title", originalTitle: "Series", mediaType: "tv", year: 2025, overview: "Synopsis", posterPath: "/series.jpg",
         seasons: [{ seasonNumber: 2 }, { seasonNumber: 1 }, { seasonNumber: 2 }] },
     ]);
     const response = await GET(request({ query: "  Same title  ", type: "tv" }));
@@ -44,7 +44,7 @@ describe("GET /api/agent/search", () => {
     expect(getAgentMediaSearchProvider).toHaveBeenCalledWith("owner");
     expect(searchMedia).toHaveBeenCalledWith({ query: "Same title" });
     expect(await response.json()).toEqual({ items: [
-      { tmdbId: 2, title: "Same title", originalTitle: "Series", type: "tv", year: 2025, overview: "Synopsis",
+      { tmdbId: 2, title: "Same title", originalTitle: "Series", type: "tv", year: 2025, overview: "Synopsis", posterPath: "/series.jpg",
         seasonNumbers: [1, 2] },
     ] });
   });

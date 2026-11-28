@@ -49,4 +49,4 @@ skill 用 `curl` 和 `jq` 调接口。Git Bash 不带 `jq`，Windows 上先装�
 
 全部要带 `Authorization: Bearer <token>`。没配 token 时这些接口返回 404（等于不存在）；token 不对或没带返回 401。
 
-需要先选片的客户端可调用搜索接口并展示返回的 `items`。用户确认后，向获取接口提交选中的 `tmdbId`、`type` 和需要的 `season`。
+需要先选片的客户端可调用搜索接口并展示返回的 `items`，其中 `posterPath` 是 TMDB 海报路径，缺少海报时为 `null`。用户确认后，向获取接口提交选中的 `tmdbId`、`type` 和需要的 `season`。
